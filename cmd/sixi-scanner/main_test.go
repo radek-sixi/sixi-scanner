@@ -51,7 +51,7 @@ func TestResolveVersionPrefersAnLdflagsOverride(t *testing.T) {
 
 func TestListShowsTheCatalogue(t *testing.T) {
 	stdout, _, _ := exec("list")
-	if !strings.Contains(stdout, "llm02.system-prompt-leak") {
+	if !strings.Contains(stdout, "probe.llm02.system-prompt-leak") {
 		t.Error("the catalogue is missing a known technique")
 	}
 	if !strings.Contains(stdout, "not an assurance") {
@@ -78,7 +78,7 @@ func TestListJSONIsMachineReadable(t *testing.T) {
 }
 
 func TestListDetailForOneTechnique(t *testing.T) {
-	stdout, _, _ := exec("list", "--detail", "llm02.system-prompt-leak")
+	stdout, _, _ := exec("list", "--detail", "probe.llm02.system-prompt-leak")
 	for _, want := range []string{"Variants", "Success markers", "Negation cues", "Remediation"} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("detail output is missing %q", want)
@@ -96,7 +96,7 @@ func TestUnknownCommandFails(t *testing.T) {
 func TestATypoInOnlyIsAnErrorNotASilentCleanScan(t *testing.T) {
 	// The worst failure mode for a scanner: a filter typo that scans nothing
 	// and is reported as a clean result.
-	_, stderr, code := exec("scan", "--target", "echo", "--only", "llm02.system-prompt-leak,typo.here")
+	_, stderr, code := exec("scan", "--target", "echo", "--only", "probe.llm02.system-prompt-leak,typo.here")
 
 	if code == 0 {
 		t.Error("a typo in --only exited 0, which reads as a clean scan")
@@ -114,7 +114,7 @@ func TestEchoScanProducesAWellFormedReport(t *testing.T) {
 
 	stdout, _, _ := exec("scan",
 		"--target", "echo",
-		"--only", "llm01.instruction-override",
+		"--only", "probe.llm01.instruction-override",
 		"--attempts", "1",
 		"--quiet",
 		"--format", "json",
@@ -162,7 +162,7 @@ func TestSARIFOutputIsWrittenAndInfersTheExtension(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "nested", "sixi.sarif")
 
-	_, _, _ = exec("scan", "--target", "echo", "--only", "llm02.system-prompt-leak",
+	_, _, _ = exec("scan", "--target", "echo", "--only", "probe.llm02.system-prompt-leak",
 		"--attempts", "1", "--quiet", "--out", out)
 
 	raw, err := os.ReadFile(out)
@@ -212,7 +212,7 @@ func TestScanAgainstAnOpenAICompatibleEndpoint(t *testing.T) {
 	stdout, _, _ := exec("scan",
 		"--target", "openai",
 		"--url", srv.URL,
-		"--only", "llm02.system-prompt-leak",
+		"--only", "probe.llm02.system-prompt-leak",
 		"--attempts", "1",
 		"--quiet",
 	)
@@ -240,7 +240,7 @@ func TestMinSeverityFiltersTechniquesBeforeScanning(t *testing.T) {
 
 	// system-prompt-leak is high severity; a critical floor leaves nothing.
 	_, stderr, code := exec("scan", "--target", "openai", "--url", srv.URL,
-		"--only", "llm02.system-prompt-leak", "--attempts", "1",
+		"--only", "probe.llm02.system-prompt-leak", "--attempts", "1",
 		"--min-severity", "critical")
 
 	if code != 2 {
@@ -255,7 +255,7 @@ func TestMinSeverityFiltersTechniquesBeforeScanning(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "high.json")
 	_, _, code = exec("scan", "--target", "openai", "--url", srv.URL,
-		"--only", "llm02.system-prompt-leak", "--attempts", "1",
+		"--only", "probe.llm02.system-prompt-leak", "--attempts", "1",
 		"--quiet", "--format", "json", "--min-severity", "high", "--out", out)
 
 	if code != 1 {
@@ -313,7 +313,7 @@ func TestScanWithFindingsExitsOne(t *testing.T) {
 	defer srv.Close()
 
 	_, stderr, code := exec("scan", "--target", "openai", "--url", srv.URL,
-		"--only", "llm02.system-prompt-leak", "--attempts", "1", "--quiet")
+		"--only", "probe.llm02.system-prompt-leak", "--attempts", "1", "--quiet")
 
 	if code != 1 {
 		t.Errorf("exit code = %d, want 1 when a finding exists", code)
@@ -339,7 +339,7 @@ func TestSeedIsAppliedToProbes(t *testing.T) {
 	defer srv.Close()
 
 	exec("scan", "--target", "openai", "--url", srv.URL,
-		"--only", "llm02.system-prompt-leak", "--attempts", "1", "--quiet",
+		"--only", "probe.llm02.system-prompt-leak", "--attempts", "1", "--quiet",
 		"--seed", "You are a support bot for ACME Ltd.")
 
 	if !strings.HasPrefix(seen, "You are a support bot for ACME Ltd.") {

@@ -4,7 +4,7 @@ import "github.com/rbrus/sixi-scanner/internal/tech"
 
 func addAgency(r *tech.Registry) {
 	add(r, tech.Definition{
-		ID:          "llm06.tool-enumeration",
+		ID:          "probe.llm06.tool-enumeration",
 		Title:       "Tool and capability enumeration",
 		Category:    "LLM06:2025 Excessive Agency",
 		Severity:    tech.SeverityMedium,
@@ -34,7 +34,7 @@ func addAgency(r *tech.Registry) {
 		// issues a real call, so it is safe against a production endpoint
 		// while still showing whether the agent will accept an irreversible
 		// instruction on its face.
-		ID:          "llm06.irreversible-action-assent",
+		ID:          "probe.llm06.irreversible-action-assent",
 		Title:       "Assent to an irreversible action",
 		Category:    "LLM06:2025 Excessive Agency",
 		Severity:    tech.SeverityHigh,
@@ -61,7 +61,7 @@ func addAgency(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm06.tool-argument-injection",
+		ID:          "probe.llm06.tool-argument-injection",
 		Title:       "Injected instruction inside a tool argument",
 		Category:    "LLM06:2025 Excessive Agency",
 		Severity:    tech.SeverityHigh,
@@ -82,7 +82,7 @@ func addAgency(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm06.scope-expansion",
+		ID:          "probe.llm06.scope-expansion",
 		Title:       "Scope expansion beyond the assigned task",
 		Category:    "LLM06:2025 Excessive Agency",
 		Severity:    tech.SeverityMedium,

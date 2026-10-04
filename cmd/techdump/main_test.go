@@ -86,7 +86,7 @@ func TestExportIsDeterministic(t *testing.T) {
 // Payloads contain angle brackets and ampersands by design. Escaping them turns
 // the export into something a reviewer cannot read.
 func TestJSONDoesNotEscapePayloads(t *testing.T) {
-	out := capture(t, "--only", "llm01.delimiter-injection")
+	out := capture(t, "--only", "probe.llm01.delimiter-injection")
 
 	if strings.Contains(out, `&lt;`) || strings.Contains(out, `\u003c`) {
 		t.Errorf("payloads were HTML-escaped:\n%s", out)
@@ -97,7 +97,7 @@ func TestJSONDoesNotEscapePayloads(t *testing.T) {
 }
 
 func TestGoExportParsesBackAsTheSameData(t *testing.T) {
-	out := capture(t, "--format", "go", "--only", "llm02.system-prompt-leak")
+	out := capture(t, "--format", "go", "--only", "probe.llm02.system-prompt-leak")
 
 	if !strings.Contains(out, "package technique") {
 		t.Fatalf("not a Go source file:\n%s", out)
@@ -113,14 +113,14 @@ func TestGoExportParsesBackAsTheSameData(t *testing.T) {
 	}
 
 	// German and French payloads must survive as themselves, not as \u escapes.
-	de := capture(t, "--format", "go", "--only", "llm01.multilingual-bypass")
+	de := capture(t, "--format", "go", "--only", "probe.llm01.multilingual-bypass")
 	if !strings.Contains(de, "Anweisungen") {
 		t.Errorf("non-ASCII was escaped rather than preserved:\n%s", de)
 	}
 }
 
 func TestGoExportNotesThatPayloadsAreAdversarial(t *testing.T) {
-	out := capture(t, "--format", "go", "--only", "llm01.instruction-override")
+	out := capture(t, "--format", "go", "--only", "probe.llm01.instruction-override")
 	if !strings.Contains(out, "adversarial prompts") {
 		t.Errorf("the generated header does not warn a reader about the payloads:\n%s", out)
 	}
@@ -131,10 +131,10 @@ func TestGoExportNotesThatPayloadsAreAdversarial(t *testing.T) {
 
 func TestFiltersNarrowTheExport(t *testing.T) {
 	var d dump
-	if err := json.Unmarshal([]byte(capture(t, "--only", "llm02.system-prompt-leak")), &d); err != nil {
+	if err := json.Unmarshal([]byte(capture(t, "--only", "probe.llm02.system-prompt-leak")), &d); err != nil {
 		t.Fatal(err)
 	}
-	if d.Count != 1 || d.Techniques[0].ID != "llm02.system-prompt-leak" {
+	if d.Count != 1 || d.Techniques[0].ID != "probe.llm02.system-prompt-leak" {
 		t.Errorf("--only did not narrow to one technique: %+v", d.Techniques)
 	}
 
@@ -164,7 +164,7 @@ func TestBadInputIsRejectedRatherThanExportedEmpty(t *testing.T) {
 	// A typo that produced an empty catalogue would look like a successful
 	// export of nothing, which is the worst possible outcome for a sync.
 	for _, args := range [][]string{
-		{"--only", "llm02.system-prompt-leak,typo.here"},
+		{"--only", "probe.llm02.system-prompt-leak,typo.here"},
 		{"--tag", "no-such-tag"},
 		{"--min-severity", "apocalyptic"},
 		{"--format", "xml"},
@@ -179,19 +179,19 @@ func TestCompareReportsAddedRemovedAndChanged(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "before.json")
 
-	baseline := capture(t, "--only", "llm02.system-prompt-leak,llm06.tool-enumeration")
+	baseline := capture(t, "--only", "probe.llm02.system-prompt-leak,probe.llm06.tool-enumeration")
 	if err := os.WriteFile(path, []byte(baseline), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
 	// One technique present in both, one only in the later dump.
-	later := capture(t, "--only", "llm02.system-prompt-leak")
-	out := capture(t, "--compare", path, "--only", "llm02.system-prompt-leak,llm01.role-confusion")
+	later := capture(t, "--only", "probe.llm02.system-prompt-leak")
+	out := capture(t, "--compare", path, "--only", "probe.llm02.system-prompt-leak,probe.llm01.role-confusion")
 
-	if !strings.Contains(out, "added    llm01.role-confusion") {
+	if !strings.Contains(out, "added    probe.llm01.role-confusion") {
 		t.Errorf("added technique not reported:\n%s", out)
 	}
-	if !strings.Contains(out, "removed  llm06.tool-enumeration") {
+	if !strings.Contains(out, "removed  probe.llm06.tool-enumeration") {
 		t.Errorf("removed technique not reported:\n%s", out)
 	}
 	_ = later

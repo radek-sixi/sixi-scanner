@@ -80,7 +80,7 @@ with `MinMarkers` above 1 survive this, which is why the noisy ones require two.
 
 **Markers are substrings, not meanings.** A technique whose success cannot be
 recognised by a distinctive string does not belong in a marker list — it needs a
-custom judge. `llm02.pii-elicitation` is the clearest example: `@` alone proves
+custom judge. `probe.llm02.pii-elicitation` is the clearest example: `@` alone proves
 nothing, so it requires a second marker.
 
 **No cross-technique reasoning.** Each reply is judged against one technique.

@@ -103,7 +103,7 @@ Re-run exactly one finding to check it still reproduces:
 
 ```console
 $ sixi-scanner scan --url https://your-agent.example/v1/chat/completions \
-    --only llm02.system-prompt-leak
+    --only probe.llm02.system-prompt-leak
 ```
 
 ## Connectors
@@ -218,7 +218,7 @@ engine to change:
 
 ```go
 tech.Data{Def: tech.Definition{
-    ID:          "llm02.example-probe",
+    ID:          "probe.llm02.example-probe",
     Title:       "Example probe",
     Category:    "LLM02:2025 Sensitive Information Disclosure",
     Severity:    tech.SeverityHigh,

@@ -40,7 +40,7 @@ Out of scope without exception:
 - Any endpoint you do not own or have written authorisation to test
 - Third-party APIs, hosted models, or SaaS products, including free tiers
 - Rate limits, load tests, or availability testing — this is not a DoS tool and
-  `llm10.unbounded-consumption` probes willingness, not endurance
+  `probe.llm10.unbounded-consumption` probes willingness, not endurance
 - Anything that would access data belonging to a person who has not consented
 - Circumventing an access control on a system you are permitted to use but not
   permitted to break

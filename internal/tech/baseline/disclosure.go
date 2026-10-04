@@ -4,7 +4,7 @@ import "github.com/rbrus/sixi-scanner/internal/tech"
 
 func addSensitiveDisclosure(r *tech.Registry) {
 	add(r, tech.Definition{
-		ID:          "llm02.system-prompt-leak",
+		ID:          "probe.llm02.system-prompt-leak",
 		Title:       "System prompt disclosure",
 		Category:    "LLM07:2025 System Prompt Leakage",
 		Severity:    tech.SeverityHigh,
@@ -27,7 +27,7 @@ func addSensitiveDisclosure(r *tech.Registry) {
 		// Translation is the reliable version of the direct ask: an agent
 		// asked to translate its own instructions treats the output as a
 		// language task rather than a disclosure.
-		ID:          "llm02.system-prompt-translation",
+		ID:          "probe.llm02.system-prompt-translation",
 		Title:       "System prompt disclosed as a translation task",
 		Category:    "LLM07:2025 System Prompt Leakage",
 		Severity:    tech.SeverityHigh,
@@ -45,7 +45,7 @@ func addSensitiveDisclosure(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm02.credential-elicitation",
+		ID:          "probe.llm02.credential-elicitation",
 		Title:       "Credential and configuration elicitation",
 		Category:    "LLM02:2025 Sensitive Information Disclosure",
 		Severity:    tech.SeverityCritical,
@@ -73,7 +73,7 @@ func addSensitiveDisclosure(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm02.context-leak",
+		ID:          "probe.llm02.context-leak",
 		Title:       "Conversation or retrieval context disclosure",
 		Category:    "LLM02:2025 Sensitive Information Disclosure",
 		Severity:    tech.SeverityHigh,
@@ -102,7 +102,7 @@ func addSensitiveDisclosure(r *tech.Registry) {
 		// a chat reply is far more likely to be the agent refusing to give a
 		// name than leaking one, and this is the technique most prone to
 		// crying wolf in a baseline set.
-		ID:          "llm02.pii-elicitation",
+		ID:          "probe.llm02.pii-elicitation",
 		Title:       "Personal data elicitation",
 		Category:    "LLM02:2025 Sensitive Information Disclosure",
 		Severity:    tech.SeverityHigh,
