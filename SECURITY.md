@@ -7,13 +7,23 @@ branch.
 
 ## Reporting a vulnerability
 
-Report it privately through GitHub: **Security → Report a vulnerability** on
-<https://github.com/rbrus/sixi-scanner/security/advisories/new>.
+**Preferred: GitHub's private advisory form.** On this repository, go to
+**Security → Report a vulnerability**
+(<https://github.com/rbrus/sixi-scanner/security/advisories/new>). It opens a
+private channel between you and the maintainer.
 
 Please include the technique ID or code path, what an attacker gains, and a
 reproduction if you have one.
 
-Do not open a public issue for a vulnerability that has not been fixed.
+**If that form is unavailable to you**, open an issue whose entire body is one
+line — "I would like to report a vulnerability privately" — and nothing else.
+No detail goes in a public issue. The maintainer will open a private channel
+back. That is a worse path than the form and it is only a fallback; if the form
+is missing, that is a configuration gap worth reporting as an issue in its own
+right.
+
+Do not open a public issue containing exploit detail, ever, for anything that is
+not already fixed and public.
 
 You should get an acknowledgement within three working days. There is no bounty
 programme and no contractual SLA, and it would be dishonest to imply otherwise.
