@@ -46,8 +46,27 @@ jobs:
 
       # The whole pipeline runs with no network, which is also the proof that
       # nothing in the scan path phones home.
-      - name: self-scan
-        run: ./sixi-scanner scan --target echo --format markdown --out /dev/null
+      #
+      # Exit codes are 0 for clean, 1 for findings, 2 for a scan that could not
+      # run and 3 for an interrupted one. The echo target reflects each probe
+      # straight back, so findings are the expected result here and 1 is fine;
+      # anything at 2 or above means the scan itself broke, which is what this
+      # step exists to catch. Asserting exit 0 here would mean asserting that
+      # the tool finds nothing, which is the opposite of what is being tested.
+      - name: self-scan (no network)
+        run: |
+          set +e
+          ./sixi-scanner scan --target echo --format markdown --out "$RUNNER_TEMP/report.md"
+          status=$?
+          set -e
+          if [ "$status" -ge 2 ]; then
+            echo "::error::self-scan exited $status; expected 0 or 1"
+            exit 1
+          fi
+          # A report that rendered is the actual assertion; the exit code only
+          # has to not be a failure of the scan itself.
+          grep -q "# Scan report" "$RUNNER_TEMP/report.md"
+          test -s "$RUNNER_TEMP/report.md"
 
   vet:
     name: gofmt and vet (stable)
