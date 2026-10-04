@@ -7,6 +7,7 @@ nobody will act on.
 
 ```
 cmd/sixi-scanner          flags, exit codes, report rendering
+cmd/techdump              exports the technique set as data, and diffs it
    │
    ├── tech      a technique as data: Definition, Registry, Technique
    │     └── tech/baseline   the 21 shipped techniques
@@ -106,6 +107,10 @@ battery of refusals.
 **A report format** — a `Write…(io.Writer, *Scan) error` function in
 `internal/report/`, plus a case in the CLI's `--format` switch and the README
 table.
+
+**A technique** — either a new `Definition` in `internal/tech/baseline/`, or a
+change to the export in `cmd/techdump` when the catalogue needs to be read by
+something other than this binary.
 
 **A judge rule** — the highest-leverage and highest-risk change. Read
 `docs/judge.md` first and bring a reply shape that demonstrates the bug; every
