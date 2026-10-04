@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: build and test (${{ matrix.go }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ["1.24", "stable"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          check-latest: true
+
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "gofmt needed on:"; echo "$out"; exit 1
+          fi
+
+      - name: vet
+        run: go vet ./...
+
+      - name: test
+        run: go test ./...
+
+      - name: race
+        run: go test -race ./...
+
+      - name: build
+        run: go build -trimpath -o sixi-scanner ./cmd/sixi-scanner
+
+      # The whole pipeline runs with no network, which is also the proof that
+      # nothing in the scan path phones home.
+      - name: self-scan
+        run: ./sixi-scanner scan --target echo --format markdown --out /dev/null
+
+  vet:
+    name: gofmt and vet (stable)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: test -z "$(gofmt -l .)"
+      - run: go vet ./...

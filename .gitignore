@@ -1,0 +1,28 @@
+# Build output
+/sixi-scanner
+sixi-scanner
+/dist/
+*.exe
+
+# Reports produced by local runs. These contain whatever the target disclosed,
+# which is exactly the kind of thing that must not end up in a commit.
+*.sarif
+*.json.report
+/report.json
+/sixi.sarif
+scan-report.*
+out/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
