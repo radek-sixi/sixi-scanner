@@ -1,4 +1,4 @@
-// Command sixi is a command-line red-team scanner for LLM agents.
+// Command sixi-scanner is a command-line red-team scanner for LLM agents.
 //
 // It sends probe prompts to an endpoint you are authorised to test, judges the
 // replies, and writes the evidence to JSON, SARIF or Markdown.
@@ -16,13 +16,41 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"strings"
 )
 
-// version is overridden at build time:
+// version is overridden at build time by the Makefile:
 //
-//	go build -ldflags "-X main.version=v1.2.3"
+//	go build -ldflags "-X main.version=$(git describe --tags)"
+//
+// That path only runs from a checkout. Someone who follows the README and runs
+// `go install …@latest` gets no ldflags at all, and a scanner that reports its
+// own version as "dev" is a scanner whose findings cannot be tied to a release.
+// resolveVersion covers that case from the build info the go command embeds.
 var version = "dev"
+
+// resolveVersion returns the version to report, preferring an explicit
+// -ldflags override and falling back to the module version the toolchain
+// recorded at install time.
+func resolveVersion() string {
+	if version != "dev" {
+		return version
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return version
+	}
+	if info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return strings.TrimPrefix(info.Main.Version, "v")
+	}
+	for _, s := range info.Settings {
+		if s.Key == "vcs.revision" && s.Value != "" {
+			return s.Value[:min(len(s.Value), 7)]
+		}
+	}
+	return version
+}
 
 const toolName = "sixi-scanner"
 
@@ -60,7 +88,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return finish(cmdList(rest, stdout), stderr)
 
 	case "version", "--version", "-v":
-		fmt.Fprintf(stdout, "%s %s\n", toolName, version)
+		fmt.Fprintf(stdout, "%s %s\n", toolName, resolveVersion())
 		return exitOK
 
 	case "help", "--help", "-h":

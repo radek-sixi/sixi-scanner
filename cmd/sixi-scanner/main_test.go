@@ -24,6 +24,29 @@ func TestVersionPrintsAToolAndVersion(t *testing.T) {
 	if !strings.Contains(stdout, "sixi-scanner") {
 		t.Errorf("version output = %q", stdout)
 	}
+	if strings.Count(stdout, " ") < 1 {
+		t.Errorf("version output has no version part: %q", stdout)
+	}
+}
+
+// Under `go test` there is no ldflags override and the module version is
+// "(devel)", so resolveVersion must fall back to the VCS revision rather than
+// printing something empty or panicking on a short value.
+func TestResolveVersionIsNeverEmpty(t *testing.T) {
+	got := resolveVersion()
+	if strings.TrimSpace(got) == "" {
+		t.Fatal("resolveVersion returned nothing")
+	}
+}
+
+func TestResolveVersionPrefersAnLdflagsOverride(t *testing.T) {
+	original := version
+	t.Cleanup(func() { version = original })
+
+	version = "v9.9.9-test"
+	if got := resolveVersion(); got != "v9.9.9-test" {
+		t.Errorf("resolveVersion = %q, want the ldflags override", got)
+	}
 }
 
 func TestListShowsTheCatalogue(t *testing.T) {
