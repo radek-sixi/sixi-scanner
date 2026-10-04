@@ -32,6 +32,26 @@ actually tested. There is a test for this and it is not negotiable.
    technique against a battery of refusals in three languages. If yours trips
    one of them, that is a real finding about your technique, not a test to relax.
 
+## Inspecting the catalogue as data
+
+```console
+go run ./cmd/techdump                      # JSON, sorted by ID, deterministic
+go run ./cmd/techdump --format go          # Go literals, ready to read or paste
+go run ./cmd/techdump --only llm02.system-prompt-leak
+go run ./cmd/techdump --tag credentials
+go run ./cmd/techdump --compare before.json
+```
+
+`--compare` is the one to use when reviewing a set of technique changes. It
+reports what was added, removed and behaviourally changed, and it treats a
+removed technique as a regression worth investigating rather than a diff line to
+accept. Rewording a description is not a behavioural change and is not reported,
+so the output stays worth reading.
+
+The export is sorted by ID on purpose. Registry order is insertion order, which
+changes whenever anyone adds a technique anywhere, so an unsorted dump would show
+a whole-file diff for a one-technique change.
+
 ## Adding a connector
 
 Implement `Send` and `Describe` in `internal/target/`, register it in `init`,
