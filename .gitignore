@@ -1,6 +1,14 @@
-# Build output
+# Build output.
+#
+# The binary lands at the repo root (see the Makefile), so the pattern is
+# root-anchored. An unanchored `sixi-scanner` line would also match
+# cmd/sixi-scanner/ and silently exclude the entire main package from the
+# repository, which is exactly what it did once.
+#
+# Guard: after editing this file, `git ls-files cmd/` must list the main
+# package, and `go build ./...` must still work.
 /sixi-scanner
-sixi-scanner
+/sixi-scanner.exe
 /dist/
 *.exe
 
