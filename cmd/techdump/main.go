@@ -12,7 +12,7 @@
 //
 //	techdump                      # JSON to stdout
 //	techdump --format go          # Go literals, ready to paste
-//	techdump --only llm02.system-prompt-leak,llm06.tool-enumeration
+//	techdump --only probe.llm02.system-prompt-leak,probe.llm06.tool-enumeration
 //	techdump --tag prompt-injection
 //	techdump --compare old.json   # what changed since the last dump
 package main

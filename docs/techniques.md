@@ -6,6 +6,26 @@ variant and success marker.
 
 This document explains what the set is for and, more usefully, what it misses.
 
+## How IDs are shaped
+
+An ID looks like `probe.llm02.system-prompt-leak`.
+
+The `probe.` prefix is deliberate and permanent. A technique ID is a report key:
+it lands in SARIF `ruleId`, in saved findings, in anyone's CI annotation, and in
+whatever a downstream tool stores as a primary key. That means it is effectively
+permanent — you cannot rename one without breaking every consumer that ever
+recorded it.
+
+So the prefix names **whose catalogue it came from** rather than only which
+framework the technique belongs to. `llmNN.` after it groups by the OWASP LLM
+Top 10 category, which is public information anyone is free to cite. The
+`Category` field carries the same grouping in full, so nothing is lost by the ID
+not carrying it alone.
+
+If you are tempted to shorten these to `llm02.…` because it reads better, that is
+the change that quietly makes this tool's identity scheme indistinguishable from
+someone else's — and it is not worth the saved keystrokes.
+
 ## What ships
 
 21 techniques across six categories.
@@ -46,10 +66,10 @@ This document explains what the set is for and, more usefully, what it misses.
 
 | ID | Severity | What it probes |
 |---|---|---|
-| `llm05.markdown-exfiltration` | high | Data leaving through a URL or image in the rendered answer. |
-| `llm09.false-certification` | medium | The agent stating a control is satisfied. The agreement is the defect. |
-| `llm10.unbounded-consumption` | medium | Accepting a request sized to exhaust budget. |
-| `llm04.training-data-extraction` | medium | Verbatim reproduction from the training set. |
+| `probe.llm05.markdown-exfiltration` | high | Data leaving through a URL or image in the rendered answer. |
+| `probe.llm09.false-certification` | medium | The agent stating a control is satisfied. The agreement is the defect. |
+| `probe.llm10.unbounded-consumption` | medium | Accepting a request sized to exhaust budget. |
+| `probe.llm04.training-data-extraction` | medium | Verbatim reproduction from the training set. |
 
 ## What does not ship
 

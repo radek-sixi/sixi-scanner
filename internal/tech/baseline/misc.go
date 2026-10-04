@@ -7,7 +7,7 @@ func addMisc(r *tech.Registry) {
 		// Output handling is a property of the system around the model, so
 		// this probes the agent for an instruction to emit unsanitised markup
 		// rather than for the markup itself.
-		ID:          "llm05.markdown-exfiltration",
+		ID:          "probe.llm05.markdown-exfiltration",
 		Title:       "Data exfiltration via rendered output",
 		Category:    "LLM05:2025 Improper Output Handling",
 		Severity:    tech.SeverityHigh,
@@ -31,7 +31,7 @@ func addMisc(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm09.false-certification",
+		ID:          "probe.llm09.false-certification",
 		Title:       "Unqualified compliance or security claim",
 		Category:    "LLM09:2025 Misinformation",
 		Severity:    tech.SeverityMedium,
@@ -58,7 +58,7 @@ func addMisc(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm10.unbounded-consumption",
+		ID:          "probe.llm10.unbounded-consumption",
 		Title:       "Unbounded output or repeated invocation",
 		Category:    "LLM10:2025 Unbounded Consumption",
 		Severity:    tech.SeverityMedium,
@@ -85,7 +85,7 @@ func addMisc(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm04.training-data-extraction",
+		ID:          "probe.llm04.training-data-extraction",
 		Title:       "Verbatim memorisation probe",
 		Category:    "LLM04:2025 Data and Model Poisoning",
 		Severity:    tech.SeverityMedium,
@@ -109,7 +109,7 @@ func addMisc(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm02.canary-leak",
+		ID:          "probe.llm02.canary-leak",
 		Title:       "Canary disclosure in configuration",
 		Category:    "LLM02:2025 Sensitive Information Disclosure",
 		Severity:    tech.SeverityHigh,

@@ -45,8 +45,14 @@ func TestTechniqueIDsAreUniqueAndWellFormed(t *testing.T) {
 		}
 		seen[id] = true
 
-		if !strings.HasPrefix(id, "llm") {
-			t.Errorf("%q does not name its framework prefix", id)
+		// "probe." names what the thing is — a probe this tool sends — and
+		// "llmNN." after it groups by the OWASP category, which is public
+		// information anyone can cite. The prefix is deliberately not a bare
+		// framework prefix: an ID is a permanent key that ends up in SARIF
+		// ruleIDs and in other people's saved reports, and it should say
+		// whose catalogue it came from.
+		if !strings.HasPrefix(id, "probe.llm") {
+			t.Errorf("%q does not follow the probe.llmNN.name convention", id)
 		}
 		if strings.ToLower(id) != id {
 			t.Errorf("%q is not lower case; IDs appear in SARIF ruleIDs", id)
@@ -171,11 +177,11 @@ func TestATopicNamingRefusalIsNotABreakForAnyTechnique(t *testing.T) {
 // because the judgement is about the technique, not the code.
 func TestNoisyTechniquesHaveMultipleMarkersOrNegations(t *testing.T) {
 	noisy := map[string]bool{
-		"llm01.instruction-override":     true, // "ready" is an ordinary word
-		"llm02.context-leak":             true, // markers name concepts, not values
-		"llm02.pii-elicitation":          true, // "@" and "account number" are common
-		"llm04.training-data-extraction": true, // "all rights reserved" appears in many refusals
-		"llm09.false-certification":      true, // "is compliant" invites agreement
+		"probe.llm01.instruction-override":     true, // "ready" is an ordinary word
+		"probe.llm02.context-leak":             true, // markers name concepts, not values
+		"probe.llm02.pii-elicitation":          true, // "@" and "account number" are common
+		"probe.llm04.training-data-extraction": true, // "all rights reserved" appears in many refusals
+		"probe.llm09.false-certification":      true, // "is compliant" invites agreement
 	}
 
 	for _, tt := range Registry().All() {
@@ -205,7 +211,7 @@ func TestRegistryIsAFreshCopyEachCall(t *testing.T) {
 	// must not share state, or a second scan in the same process would inherit
 	// the first one's filters.
 	a, b := Registry(), Registry()
-	a.Select([]string{"llm01.instruction-override"})
+	a.Select([]string{"probe.llm01.instruction-override"})
 
 	if b.Len() != a.Len() {
 		t.Errorf("registries share state: %d vs %d", a.Len(), b.Len())

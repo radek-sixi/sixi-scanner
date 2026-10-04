@@ -71,7 +71,7 @@ func lower(s string) string {
 // with without running anything, and it can be extended without touching the
 // engine.
 type Definition struct {
-	// ID is a stable dotted identifier, e.g. "llm01.system-prompt-leak".
+	// ID is a stable dotted identifier, e.g. "probe.llm01.system-prompt-leak".
 	// It appears in reports and in the SARIF ruleID, so changing one changes
 	// the identity of a finding. Treat it as permanent.
 	ID string

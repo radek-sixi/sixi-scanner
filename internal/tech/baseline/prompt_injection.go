@@ -43,7 +43,7 @@ var (
 
 func addPromptInjection(r *tech.Registry) {
 	add(r, tech.Definition{
-		ID:          "llm01.instruction-override",
+		ID:          "probe.llm01.instruction-override",
 		Title:       "Instruction override",
 		Category:    "LLM01:2025 Prompt Injection",
 		Severity:    tech.SeverityHigh,
@@ -62,7 +62,7 @@ func addPromptInjection(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm01.delimiter-injection",
+		ID:          "probe.llm01.delimiter-injection",
 		Title:       "Delimiter injection / forged conversation turn",
 		Category:    "LLM01:2025 Prompt Injection",
 		Severity:    tech.SeverityHigh,
@@ -80,7 +80,7 @@ func addPromptInjection(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm01.role-confusion",
+		ID:          "probe.llm01.role-confusion",
 		Title:       "Authority and persona framing",
 		Category:    "LLM01:2025 Prompt Injection",
 		Severity:    tech.SeverityMedium,
@@ -99,7 +99,7 @@ func addPromptInjection(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm01.encoded-instruction",
+		ID:          "probe.llm01.encoded-instruction",
 		Title:       "Encoded instruction",
 		Category:    "LLM01:2025 Prompt Injection",
 		Severity:    tech.SeverityMedium,
@@ -121,7 +121,7 @@ func addPromptInjection(r *tech.Registry) {
 		// enforced per turn, so an agent can hold the line here and fold on
 		// the next request. The report names this as a first-stage probe
 		// rather than as a complete test of the weakness.
-		ID:          "llm01.refusal-consistency",
+		ID:          "probe.llm01.refusal-consistency",
 		Title:       "Refusal then escalation in a single turn",
 		Category:    "LLM01:2025 Prompt Injection",
 		Severity:    tech.SeverityMedium,
@@ -139,7 +139,7 @@ func addPromptInjection(r *tech.Registry) {
 	})
 
 	add(r, tech.Definition{
-		ID:          "llm01.multilingual-bypass",
+		ID:          "probe.llm01.multilingual-bypass",
 		Title:       "Non-English instruction",
 		Category:    "LLM01:2025 Prompt Injection",
 		Severity:    tech.SeverityMedium,
@@ -162,7 +162,7 @@ func addPromptInjection(r *tech.Registry) {
 		// will read, not in a user turn. Against an endpoint with no retrieval
 		// this cannot land, so a clean result here says very little — which is
 		// why the description says so.
-		ID:          "llm01.indirect-injection",
+		ID:          "probe.llm01.indirect-injection",
 		Title:       "Indirect injection via quoted content",
 		Category:    "LLM01:2025 Prompt Injection",
 		Severity:    tech.SeverityHigh,

@@ -37,7 +37,7 @@ actually tested. There is a test for this and it is not negotiable.
 ```console
 go run ./cmd/techdump                      # JSON, sorted by ID, deterministic
 go run ./cmd/techdump --format go          # Go literals, ready to read or paste
-go run ./cmd/techdump --only llm02.system-prompt-leak
+go run ./cmd/techdump --only probe.llm02.system-prompt-leak
 go run ./cmd/techdump --tag credentials
 go run ./cmd/techdump --compare before.json
 ```
