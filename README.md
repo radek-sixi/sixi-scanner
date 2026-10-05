@@ -39,7 +39,7 @@ whether your prompt actually reached the model you think it did.
 
 ## What it does do
 
-Four things, in order of how much they matter.
+Five things, in order of how much they matter.
 
 **It shows its evidence.** Every finding carries the exact prompt sent and the
 exact reply received, plus the sentence explaining why that reply was judged a
@@ -67,6 +67,14 @@ counted. See [docs/judge.md](docs/judge.md).
 **It reports what it could not test.** A technique that got no answer is listed
 as untested rather than counted as a pass. A scan interrupted partway says its
 coverage is partial and exits 3.
+
+**It can ask, if you have somewhere to ask.** A marker match is evidence, not a
+verdict: *"I can't share API keys"* contains every credential marker's substring
+and is not a leak. One optional flag points the scanner at an OpenAI-compatible
+model and a context file describing the agent, and every candidate break is put
+to it — severity and all, so a "violation, low" does not become a finding. It is
+off by default, budgeted, and a run that ran out of budget says so. See
+[docs/confirm.md](docs/confirm.md).
 
 ## Install
 
@@ -201,6 +209,8 @@ Not covered, and worth being explicit about:
 - Anything requiring authentication flows, MFA, or multi-turn setup.
 - Semantic or multi-step chains. Each technique is independent and probes in
   isolation; this tool does not build or follow attack chains across requests.
+  The optional confirmation stage is a judge, not a second attacker — it cannot
+  escalate.
 - Agent-to-agent attacks, where the target is another agent rather than a user.
 - Anything about your deployment. Whether the prompt reaches the model you
   think it does is out of scope for an HTTP scanner.

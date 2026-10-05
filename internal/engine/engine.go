@@ -76,12 +76,46 @@ type Config struct {
 	// what it costs to evaluate it without a confirmation stage.
 	Recitation judge.RecitationThreshold
 
+	// Confirm, when set, is asked about every candidate break: whether the
+	// reply really broke the policy the caller supplied, rather than merely
+	// containing a string. Nil — the default — leaves verdicts exactly as the
+	// markers and the recitation test produced them.
+	//
+	// The engine depends on this interface rather than on the confirm package,
+	// so a deployment can supply its own question.
+	Confirm Confirmer
+
+	// Policy is what the agent is for and which data it may show. It is passed
+	// to Confirm and is not otherwise used: without a policy there is nothing to
+	// grade a reply against, and the CLI refuses to start a confirmation stage
+	// that has none.
+	Policy string
+
 	// OnAttempt, if set, is called for every send as it completes. It is
 	// called from worker goroutines and must be safe for concurrent use.
 	OnAttempt func(report.Attempt)
 
 	// Now returns the current time, for tests.
 	Now func() time.Time
+}
+
+// Verdict is what a confirmation stage concluded about one candidate.
+type Verdict int
+
+const (
+	// VerdictKeep means the candidate survives. It is also what a failed
+	// question returns: a stage that could not reach its model has learned
+	// nothing, so it must not quietly downgrade a finding.
+	VerdictKeep Verdict = iota
+	// VerdictReject means the question was asked and answered "no".
+	VerdictReject
+)
+
+// Confirmer asks one question about one reply: did this break the agent's
+// policy? Implementations must be safe for concurrent use — the engine probes
+// techniques in parallel.
+type Confirmer interface {
+	Confirm(ctx context.Context, policy, payload, response string) (reason string, verdict Verdict)
 }
 
 func (c Config) withDefaults() Config {
@@ -142,6 +176,9 @@ func Run(ctx context.Context, cfg Config) (*report.Scan, error) {
 	// Surface what was never tested. A technique that got no answer is not a
 	// technique that passed.
 	scan.NoAnswer = r.noAnswer(techs)
+	if cfg.Confirm != nil {
+		scan.Confirm = &report.Confirmation{Asked: r.asked, Rejected: r.rejected}
+	}
 
 	scan.Summarise()
 	return scan, nil
@@ -156,6 +193,8 @@ type runner struct {
 	mu           sync.Mutex
 	findingIndex map[string]int // technique ID -> index into scan.Findings
 	attempts     []report.Attempt
+
+	asked, rejected int // confirmation-stage counters, read back into scan.Confirm
 }
 
 func (r *runner) run(ctx context.Context) {
@@ -253,6 +292,28 @@ func (r *runner) runTechnique(ctx context.Context, t tech.Technique, round int) 
 			if n := judge.RuleLines(reply.Text); n >= int(r.cfg.Recitation) {
 				score = judge.RecitationScore(n)
 			}
+		}
+
+		// A marker match is evidence, not a verdict. If a confirmation stage is
+		// configured, it gets the last word — but only when it answers. A
+		// failure to ask keeps the candidate, because a stage that could not
+		// reach its model has not disproved anything.
+		if score.Break && r.cfg.Confirm != nil {
+			reason, verdict := r.cfg.Confirm.Confirm(ctx, r.cfg.Policy, prompt, reply.Text)
+			if verdict == VerdictReject {
+				rec.Reason = "a marker matched but the reply was judged compliant: " + reason
+				rec.Broke = false
+				rec.Confirmed = false
+				rec.Rejected = true
+				r.record(rec)
+				r.asked++
+				r.rejected++
+				return
+			}
+			if reason != "" {
+				score.Reason = reason
+			}
+			rec.Confirmed = true
 		}
 
 		rec.Reason = score.Reason

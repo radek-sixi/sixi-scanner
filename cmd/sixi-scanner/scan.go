@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rbrus/sixi-scanner/internal/confirm"
 	"github.com/rbrus/sixi-scanner/internal/engine"
 	"github.com/rbrus/sixi-scanner/internal/judge"
 	"github.com/rbrus/sixi-scanner/internal/report"
@@ -49,6 +51,16 @@ func cmdScan(args []string, stdout, stderr io.Writer) result {
 		reciteTh = fs.Int("recitation-threshold", judge.DefaultRecitationThreshold,
 			"lines stating a constraint on the agent itself before the reply counts as reciting its "+
 				"operating rules; 0 disables the test. See docs/recitation.md")
+
+		// The optional confirmation stage: off unless an endpoint is named.
+		confirmURL    = fs.String("confirm-url", "", "OpenAI-compatible endpoint to ask whether a candidate break really broke the agent's policy; empty disables the stage")
+		confirmModel  = fs.String("confirm-model", "", "model name to ask at --confirm-url")
+		confirmKey    = fs.String("confirm-key", os.Getenv("SIXI_CONFIRM_API_KEY"), "bearer token for --confirm-url (or set SIXI_CONFIRM_API_KEY)")
+		confirmFloor  = fs.String("confirm-min-severity", "medium", "lowest severity an answer may carry and still keep a finding: none, low, medium, high, critical")
+		confirmBudget = fs.Int("confirm-budget", 200,
+			"how many candidates the stage may ask about in one scan; 0 means unlimited")
+		contextPath = fs.String("context", "",
+			"JSON file describing the agent: {\\\"purpose\\\": \\\"what it is for and which data it may show\\\"}. Required by --confirm-url, which has no policy to grade against without it")
 
 		insecure = fs.Bool("insecure", false, "skip TLS verification (self-signed staging endpoints)")
 		quiet    = fs.Bool("quiet", false, "only print the report to stdout")
@@ -143,6 +155,9 @@ Examples:
 		defer cancel()
 	}
 
+	// The confirmation stage is opt-in and needs a policy to grade against, so
+	// the two flags are validated together before anything is sent. Failing
+	// here costs nothing; failing mid-scan would waste the run.
 	scanCfg := engine.Config{
 		Target:        tgt,
 		Registry:      reg,
@@ -152,6 +167,25 @@ Examples:
 		Seed:          *seed,
 		MinConfidence: *minConf,
 		Recitation:    judge.RecitationThreshold(*reciteTh),
+	}
+
+	var stage *confirm.Stage
+	if *confirmURL != "" {
+		if *contextPath == "" {
+			return result{code: exitUsage, err: fmt.Errorf("--confirm-url needs --context: a confirmation " +
+				"stage has to know what the agent is for and which data it may show, and guessing that " +
+				"would make its verdicts unfalsifiable")}
+		}
+		if *confirmModel == "" {
+			return result{code: exitUsage, err: fmt.Errorf("--confirm-url needs --confirm-model")}
+		}
+		tc, err := loadContext(*contextPath)
+		if err != nil {
+			return result{code: exitUsage, err: err}
+		}
+		stage = confirm.NewStage(confirm.New(*confirmURL, *confirmModel, *confirmKey, *timeout, *confirmBudget), *confirmFloor)
+		scanCfg.Confirm = stage
+		scanCfg.Policy = tc.Purpose
 	}
 	if !*quiet {
 		scanCfg.OnAttempt = progressPrinter(stderr)
@@ -167,6 +201,16 @@ Examples:
 		scan.TargetNotes = append(scan.TargetNotes,
 			"TLS verification was disabled (--insecure).")
 	}
+	if stage != nil {
+		asked, _, rejected, exhausted := stage.Stats()
+		scan.Confirm = &report.Confirmation{
+			Model:     stage.Model(),
+			Asked:     asked,
+			Rejected:  rejected,
+			Exhausted: exhausted,
+		}
+	}
+
 	applyMinSeverity(scan, floor)
 
 	if ctx.Err() != nil {
@@ -317,4 +361,30 @@ func firstLine(s string) string {
 		return s[:i]
 	}
 	return s
+}
+
+// targetContext is what a confirmation stage grades against: what the agent is
+// for, and which data it is entitled to show the caller.
+//
+// It is deliberately small. A confirmation stage that inherits a page of prose
+// cannot be argued with, and the point of the stage is that its verdicts can be.
+type targetContext struct {
+	Purpose string `json:"purpose"`
+}
+
+// loadContext reads a target context file. A missing purpose is rejected rather
+// than defaulted: a stage asked against an empty policy grades against nothing.
+func loadContext(path string) (*targetContext, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read --context %s: %w", path, err)
+	}
+	var tc targetContext
+	if err := json.Unmarshal(raw, &tc); err != nil {
+		return nil, fmt.Errorf("parse --context %s: %w", path, err)
+	}
+	if strings.TrimSpace(tc.Purpose) == "" {
+		return nil, fmt.Errorf("--context %s has no \"purpose\"; a confirmation stage has nothing to grade against", path)
+	}
+	return &tc, nil
 }
