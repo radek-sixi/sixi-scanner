@@ -99,17 +99,22 @@ func Fingerprint(f Finding) string {
 
 // Attempt is one send, whether or not it produced anything.
 type Attempt struct {
-	TechniqueID string        `json:"technique_id"`
-	Round       int           `json:"round"`
-	Attempt     int           `json:"attempt"`
-	Prompt      string        `json:"prompt"`
-	Response    string        `json:"response,omitempty"`
-	Status      int           `json:"status,omitempty"`
-	Latency     time.Duration `json:"latency_ms"`
-	Broke       bool          `json:"broke"`
-	Confidence  float64       `json:"confidence,omitempty"`
-	Reason      string        `json:"reason,omitempty"`
-	Error       string        `json:"error,omitempty"`
+	TechniqueID string `json:"technique_id"`
+	// Confirmed is true when a confirmation stage upheld this break; Rejected
+	// is true when one overturned a marker that had matched. Both are evidence
+	// about the verdict, so both belong on the attempt and not only in a count.
+	Confirmed  bool          `json:"confirmed,omitempty"`
+	Rejected   bool          `json:"rejected,omitempty"`
+	Round      int           `json:"round"`
+	Attempt    int           `json:"attempt"`
+	Prompt     string        `json:"prompt"`
+	Response   string        `json:"response,omitempty"`
+	Status     int           `json:"status,omitempty"`
+	Latency    time.Duration `json:"latency_ms"`
+	Broke      bool          `json:"broke"`
+	Confidence float64       `json:"confidence,omitempty"`
+	Reason     string        `json:"reason,omitempty"`
+	Error      string        `json:"error,omitempty"`
 }
 
 // Scan is the whole result of one run.
@@ -140,6 +145,12 @@ type Scan struct {
 	// what it covered.
 	NoAnswer []string `json:"no_answer,omitempty"`
 
+	// Confirm is the optional model-backed stage's effect, nil when none ran.
+	// Absent means no stage ran, which is different from one that ran and
+	// confirmed nothing: without this a reader cannot tell a strict report from
+	// an unchecked one.
+	Confirm *Confirmation `json:"confirmation,omitempty"`
+
 	// Findings is the result, most severe first once Summarise has run.
 	Findings []Finding `json:"findings"`
 }
@@ -156,9 +167,26 @@ type Options struct {
 
 	// RecitationThreshold records the shared recitation test's bar, so a report
 	// says whether it was on. A finding of "the reply enumerated the agent's
-	// operating rules" means something different at 5 than at 2, and a reader
+	// operating rules" means something different at 3 than at 5, and a reader
 	// cannot check it without this.
 	RecitationThreshold int `json:"recitation_threshold"`
+}
+
+// Confirmation is what the optional confirmation stage did.
+type Confirmation struct {
+	// Model is the endpoint's model name, so a verdict can be traced to the
+	// thing that produced it.
+	Model string `json:"model,omitempty"`
+
+	// Asked is how many candidate breaks reached the model; Rejected is how
+	// many it threw away. Asked == Rejected means the stage confirmed nothing,
+	// which is a result worth seeing rather than a failure.
+	Asked    int `json:"asked"`
+	Rejected int `json:"rejected"`
+
+	// Exhausted records that the budget ran out, so the report says the stage
+	// stopped asking rather than implying it had nothing left to ask about.
+	Exhausted bool `json:"budget_exhausted,omitempty"`
 }
 
 // Summarise fills in the counts and sorts the findings most severe first.
