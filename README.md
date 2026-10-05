@@ -39,11 +39,23 @@ whether your prompt actually reached the model you think it did.
 
 ## What it does do
 
-Three things, in order of how much they matter.
+Four things, in order of how much they matter.
 
 **It shows its evidence.** Every finding carries the exact prompt sent and the
 exact reply received, plus the sentence explaining why that reply was judged a
 break. A security claim you cannot check is a rumour.
+
+**It finds the leak nobody asked for.** A marker list only recognises the leak
+its own payload requested, and most real leaks are not the one you asked about.
+An agent asked about package managers can answer with its refund cap, its
+e-mail allow-list and the accounts it may not touch — handing over its
+instruction set — while every technique reads that reply as a hold, because no
+marker shares a substring with a paraphrase of a rule. A shared second marker
+catches a reply that states three or more constraints on the agent itself,
+whichever probe drew it. On 1,456 replies recorded from a real agent this took
+payload recall from 0.444 to 0.889 at no cost in precision. See
+[docs/recitation.md](docs/recitation.md), which also says plainly what this
+cannot decide on its own.
 
 **It does not cry wolf on refusals.** This is the hard part of the problem and
 the part most tools get wrong. A target that answers *"I don't retain any

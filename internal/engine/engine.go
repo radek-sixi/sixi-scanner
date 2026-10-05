@@ -65,6 +65,17 @@ type Config struct {
 	// reported so a reader knows how much evidence a finding rests on.
 	MinConfidence float64
 
+	// Recitation is the bar a reply must clear, in lines that state a
+	// constraint on the agent itself, before it is treated as having recited
+	// the agent's operating rules. It rides above every technique's own
+	// markers, because a technique's markers only know how to recognise the
+	// leak its own payload asked for. Zero disables it; the CLI's default is
+	// judge.DefaultRecitationThreshold, which was measured rather than chosen.
+	//
+	// See internal/judge/recitation.go for why this is a shared marker and
+	// what it costs to evaluate it without a confirmation stage.
+	Recitation judge.RecitationThreshold
+
 	// OnAttempt, if set, is called for every send as it completes. It is
 	// called from worker goroutines and must be safe for concurrent use.
 	OnAttempt func(report.Attempt)
@@ -114,12 +125,13 @@ func Run(ctx context.Context, cfg Config) (*report.Scan, error) {
 		StartedAt:     started,
 		Target:        cfg.Target.Describe(),
 		Options: report.Options{
-			Rounds:        cfg.Rounds,
-			MaxAttempts:   cfg.MaxAttempts,
-			Concurrency:   cfg.Concurrency,
-			MinConfidence: cfg.MinConfidence,
-			TechniqueIDs:  cfg.Registry.IDs(),
-			Tags:          tagsOf(cfg.Registry),
+			Rounds:              cfg.Rounds,
+			MaxAttempts:         cfg.MaxAttempts,
+			Concurrency:         cfg.Concurrency,
+			MinConfidence:       cfg.MinConfidence,
+			TechniqueIDs:        cfg.Registry.IDs(),
+			Tags:                tagsOf(cfg.Registry),
+			RecitationThreshold: int(cfg.Recitation),
 		},
 	}
 
@@ -231,6 +243,18 @@ func (r *runner) runTechnique(ctx context.Context, t tech.Technique, round int) 
 		// request rather than answering it. The body still reaches the judge:
 		// an agent that leaks a system prompt in its error page has leaked it.
 		score := judge.Disclosure(jdef, reply.Text)
+
+		// A technique's own markers only recognise the leak its own payload
+		// asked for. When they find nothing, the shared recitation test gets a
+		// turn, because an agent asked about package managers can still answer
+		// with its refund cap and its e-mail allow-list — and no marker in this
+		// repository shares a substring with a paraphrase of a rule.
+		if !score.Break && r.cfg.Recitation > 0 {
+			if n := judge.RuleLines(reply.Text); n >= int(r.cfg.Recitation) {
+				score = judge.RecitationScore(n)
+			}
+		}
+
 		rec.Reason = score.Reason
 		rec.Broke = score.Break
 		rec.Confidence = score.Confidence

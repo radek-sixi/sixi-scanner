@@ -153,6 +153,12 @@ type Options struct {
 	TechniqueIDs  []string `json:"techniques"`
 	Tags          []string `json:"tags,omitempty"`
 	MinSeverity   string   `json:"min_severity"`
+
+	// RecitationThreshold records the shared recitation test's bar, so a report
+	// says whether it was on. A finding of "the reply enumerated the agent's
+	// operating rules" means something different at 5 than at 2, and a reader
+	// cannot check it without this.
+	RecitationThreshold int `json:"recitation_threshold"`
 }
 
 // Summarise fills in the counts and sorts the findings most severe first.

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rbrus/sixi-scanner/internal/engine"
+	"github.com/rbrus/sixi-scanner/internal/judge"
 	"github.com/rbrus/sixi-scanner/internal/report"
 	"github.com/rbrus/sixi-scanner/internal/target"
 	"github.com/rbrus/sixi-scanner/internal/tech"
@@ -44,6 +45,10 @@ func cmdScan(args []string, stdout, stderr io.Writer) result {
 		timeout     = fs.Duration("timeout", 30*time.Second, "per-request timeout")
 		minConf     = fs.Float64("min-confidence", 0, "discard breaks scoring below this")
 		seed        = fs.String("seed", "", "prompt sent before every probe, to start each conversation from the same state")
+
+		reciteTh = fs.Int("recitation-threshold", judge.DefaultRecitationThreshold,
+			"lines stating a constraint on the agent itself before the reply counts as reciting its "+
+				"operating rules; 0 disables the test. See docs/recitation.md")
 
 		insecure = fs.Bool("insecure", false, "skip TLS verification (self-signed staging endpoints)")
 		quiet    = fs.Bool("quiet", false, "only print the report to stdout")
@@ -146,6 +151,7 @@ Examples:
 		Concurrency:   *concurrency,
 		Seed:          *seed,
 		MinConfidence: *minConf,
+		Recitation:    judge.RecitationThreshold(*reciteTh),
 	}
 	if !*quiet {
 		scanCfg.OnAttempt = progressPrinter(stderr)
