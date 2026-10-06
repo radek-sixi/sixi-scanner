@@ -1,5 +1,7 @@
 # Sixi Scanner
 
+[![CI](https://github.com/rbrus/sixi-scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/rbrus/sixi-scanner/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/rbrus/sixi-scanner)](https://github.com/rbrus/sixi-scanner/releases) [![Go Reference](https://pkg.go.dev/badge/github.com/rbrus/sixi-scanner.svg)](https://pkg.go.dev/github.com/rbrus/sixi-scanner) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Benchmark](https://img.shields.io/badge/benchmark-1st%20precision%20%26%20recall-orange)](https://github.com/rbrus/agent-redteam-benchmark)
+
 A command-line red-team scanner for LLM agents. It sends probe prompts to an
 endpoint you are authorised to test, judges the replies, and writes out the
 evidence.
@@ -157,6 +159,8 @@ Write a report to a file with `--out`; the format is taken from the extension
 unless `--format` says otherwise.
 
 ## In CI
+
+On GitHub, the [`rbrus/scan-action`](https://github.com/rbrus/scan-action) Action does all of this in one step. Anywhere else:
 
 ```yaml
 - name: Red-team the agent
