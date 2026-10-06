@@ -217,6 +217,10 @@ Examples:
 		scan.TargetNotes = append(scan.TargetNotes,
 			"The scan was stopped before every technique had been tried. Coverage is partial.")
 	}
+	if scan.Unreached() {
+		scan.TargetNotes = append(scan.TargetNotes,
+			"No technique got an answer from the target. Nothing was assessed; this is not a clean result.")
+	}
 	scan.Summarise()
 
 	if err := writeReport(stdout, *format, scan, !*quiet); err != nil {
@@ -235,6 +239,11 @@ Examples:
 	}
 	if len(scan.Findings) > 0 {
 		return result{code: exitFindings}
+	}
+	// No technique got an answer: the target was never reached. Exiting 0 here
+	// would let a CI job read a down endpoint as a clean agent.
+	if scan.Unreached() {
+		return result{code: exitUsage, err: fmt.Errorf("no technique got an answer from %s; nothing was assessed", scan.Target)}
 	}
 	return result{code: exitOK}
 }

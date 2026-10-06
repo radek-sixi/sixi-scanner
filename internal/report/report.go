@@ -235,7 +235,18 @@ func (s *Scan) ExitCode() int {
 	if len(s.Findings) > 0 {
 		return 1
 	}
+	if s.Unreached() {
+		return 2
+	}
 	return 0
+}
+
+// Unreached reports whether no technique got an answer at all. Such a scan
+// assessed nothing: the target was down, the URL was wrong or a credential was
+// missing. It is not a clean result, and must not exit as one.
+func (s *Scan) Unreached() bool {
+	n := len(s.Options.TechniqueIDs)
+	return n > 0 && len(s.NoAnswer) >= n
 }
 
 // String renders a one-line summary, used by the CLI at the end of a run.
