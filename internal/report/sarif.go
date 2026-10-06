@@ -176,7 +176,7 @@ func WriteSARIF(w io.Writer, s *Scan) error {
 			}},
 			Results: results,
 			Invocations: []sarifInvocation{{
-				ExecutionSuccessful: len(s.Findings) == 0,
+				ExecutionSuccessful: s.ExitCode() == 0,
 				ExitCode:            s.ExitCode(),
 			}},
 		}},

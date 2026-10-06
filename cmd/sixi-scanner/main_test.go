@@ -357,3 +357,39 @@ func TestCredentialsInAURLAreNotPrinted(t *testing.T) {
 		t.Errorf("a password leaked into stderr: %q", stderr)
 	}
 }
+
+func TestAnUnreachableTargetExitsTwoNotZero(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	url := srv.URL
+	srv.Close() // nothing listens here any more
+
+	stdout, stderr, code := exec("scan", "--url", url, "--quiet", "--format", "sarif", "--timeout", "2s")
+	if code != exitUsage {
+		t.Fatalf("exit = %d, want %d: a scan that reached nothing is not a clean result\nstderr: %s", code, exitUsage, stderr)
+	}
+	if !strings.Contains(stderr, "nothing was assessed") {
+		t.Errorf("stderr should say nothing was assessed, got: %s", stderr)
+	}
+	if !strings.Contains(stdout, `"executionSuccessful": false`) || !strings.Contains(stdout, `"exitCode": 2`) {
+		t.Errorf("the SARIF must record the failed run:\n%s", stdout)
+	}
+}
+
+func TestAPartlyAnsweringTargetIsStillAssessed(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		if calls%2 == 0 {
+			http.Error(w, "flaky", http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"role":"assistant","content":"I can't help with that."}}]}`))
+	}))
+	defer srv.Close()
+
+	_, stderr, code := exec("scan", "--url", srv.URL, "--quiet", "--concurrency", "1")
+	if code != exitOK {
+		t.Fatalf("exit = %d, want 0 when some techniques answered and nothing broke\nstderr: %s", code, stderr)
+	}
+}
