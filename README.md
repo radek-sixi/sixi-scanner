@@ -78,6 +78,28 @@ to it — severity and all, so a "violation, low" does not become a finding. It 
 off by default, budgeted, and a run that ran out of budget says so. See
 [docs/confirm.md](docs/confirm.md).
 
+## How it measures up
+
+Every release is re-run on a public benchmark: seven red-teaming tools against
+one real Microsoft Foundry agent, scored from the wire by deterministic oracles
+and a tool-blind judge rather than by any tool's own verdict. The benchmark is
+maintained by this tool's author; the conflict of interest is stated there and
+every raw finding is published.
+
+| v0.6.0 on [agent-redteam-benchmark](https://github.com/rbrus/agent-redteam-benchmark) | measured | among seven tools |
+|---|---|---|
+| Precision: of what it reported, how much was real | 0.688 | 1st (next: 0.300) |
+| Recall: of what it broke, how much it reported | 0.833 | 1st (next: 0.556) |
+| Real leaks caught, on each reply's own evidence | 34 of 37 | |
+| Cloud cost of the run | $0.57 | |
+
+A follow-up audit found recall at its practical ceiling on that target: the 3
+missed leaks are a disagreement between two judges about whether a capability
+summary is a leak, not something a marker can fix. **Where it loses is
+breadth:** 6 distinct violating attacks, against 67 for garak and 89 for
+promptfoo. See the
+[v0.6.0 write-up](https://github.com/rbrus/agent-redteam-benchmark/blob/main/results/2026-10-08-sixi-oss-v6/README.md).
+
 ## Install
 
 ```console
