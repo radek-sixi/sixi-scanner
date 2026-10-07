@@ -58,6 +58,12 @@ func (o *openaiTarget) Send(ctx context.Context, prompt string) (Reply, error) {
 		return reply, nil
 	}
 
+	if msg := digAny(decoded, "choices.0.message"); msg != nil {
+		if calls, known := ExtractToolCalls(msg); known {
+			reply.ToolCalls = calls
+		}
+	}
+
 	text, ok := dig(decoded, "choices.0.message.content")
 	if !ok {
 		if e, found := dig(decoded, "error.message"); found {

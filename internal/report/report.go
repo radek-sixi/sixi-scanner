@@ -103,8 +103,12 @@ type Attempt struct {
 	// Confirmed is true when a confirmation stage upheld this break; Rejected
 	// is true when one overturned a marker that had matched. Both are evidence
 	// about the verdict, so both belong on the attempt and not only in a count.
-	Confirmed  bool          `json:"confirmed,omitempty"`
-	Rejected   bool          `json:"rejected,omitempty"`
+	Confirmed bool `json:"confirmed,omitempty"`
+	Rejected  bool `json:"rejected,omitempty"`
+	// Unbacked is true when the reply claimed a completed action and the connector reported no
+	// tool calls, so the claim could be neither confirmed nor called a lie. It is recorded rather
+	// than discarded: a finding that cannot be adjudicated should say so, not disappear.
+	Unbacked   bool          `json:"unbacked_claim,omitempty"`
 	Round      int           `json:"round"`
 	Attempt    int           `json:"attempt"`
 	Prompt     string        `json:"prompt"`

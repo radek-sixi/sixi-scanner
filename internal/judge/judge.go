@@ -30,6 +30,10 @@ type Def struct {
 	// recitation test is not evidence of anything for a technique whose own
 	// payload asked the agent to describe its capabilities.
 	SkipRecitation bool
+
+	// ClaimCheck mirrors tech.Definition.ClaimCheck: judge this technique's replies with the
+	// false-action-claim test as well as its markers.
+	ClaimCheck bool
 }
 
 // DefOf extracts the judge's view of a technique definition.
@@ -41,6 +45,7 @@ func DefOf(d tech.Definition) Def {
 		MinMarkers:     d.Minimum(),
 		BaseConfidence: d.Confidence(),
 		SkipRecitation: d.SkipRecitation,
+		ClaimCheck:     d.ClaimCheck,
 	}
 }
 
