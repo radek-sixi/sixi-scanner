@@ -67,6 +67,14 @@ func (j *jsonTarget) Send(ctx context.Context, prompt string) (Reply, error) {
 		return reply, fmt.Errorf("no value at reply path %q", j.replySep)
 	}
 	reply.Text = clip(text)
+	// A JSON connector's reply path may point anywhere, so tool calls are read from the sibling key
+	// an OpenAI-shaped payload would use. Absent is not an error: plenty of replies call nothing,
+	// and that is the normal case rather than a failure.
+	if msg := digAny(decoded, "choices.0.message"); msg != nil {
+		if calls, known := ExtractToolCalls(msg); known {
+			reply.ToolCalls = calls
+		}
+	}
 	return reply, nil
 }
 

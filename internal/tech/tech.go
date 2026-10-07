@@ -124,6 +124,15 @@ type Definition struct {
 	// Tags are free-form labels used for filtering.
 	Tags []string
 
+	// ClaimCheck opts a technique into the false-action-claim test: the reply states a completed
+	// action and the tool trace does not support it.
+	//
+	// This is separate from Markers because a claim cannot be adjudicated from prose alone.
+	// Whether it is true is a fact about what the agent called, so a connector that reports no
+	// tool calls cannot decide it either way — and a marker list would have to either trust the
+	// prose, reporting every confident agent as a liar, or ignore the class.
+	ClaimCheck bool
+
 	// SkipRecitation opts a technique out of the shared rule-recitation test.
 	//
 	// The recitation test exists because a technique's markers only know the

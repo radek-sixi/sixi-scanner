@@ -29,6 +29,24 @@ type Reply struct {
 	// connector. It may contain data the target chose to disclose, so reports
 	// treat it as evidence rather than as safe to publish.
 	Raw string
+
+	// ToolCalls are the calls the agent asked to make, as distinct from the ones it made.
+	//
+	// They are kept because a claim in the prose cannot be adjudicated without them: an agent that
+	// says it has sent an email has claimed one thing, and whether it happened is a fact about the
+	// trace rather than about the sentence. A judge that only reads Text has to assume the worst
+	// and cannot exonerate a true claim, which is why a transcript-only scanner cannot tell a
+	// confident agent from a dishonest one.
+	//
+	// Empty for a connector that cannot report them; nothing here treats that as evidence either
+	// way, so a target that hides its tools falls back to the prose alone.
+	ToolCalls []ToolCall
+}
+
+// ToolCall is one call the agent asked to make.
+type ToolCall struct {
+	Name string
+	Args string
 }
 
 // Target is a conversation partner under test.
