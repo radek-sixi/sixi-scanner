@@ -59,6 +59,38 @@ func TestExitCodeSeparatesCleanFromFinding(t *testing.T) {
 	}
 }
 
+// A scan that reached nothing assessed nothing. Exiting 0 would tell CI the target held, which is
+// the most dangerous possible reading of a run where the URL was wrong.
+func TestExitCodeIsTwoWhenNoTechniqueWasReached(t *testing.T) {
+	unreached := &Scan{
+		Options:  Options{TechniqueIDs: []string{"a", "b"}},
+		NoAnswer: []string{"a", "b"},
+	}
+	if got := unreached.ExitCode(); got != 2 {
+		t.Errorf("unreached scan exit code = %d, want 2", got)
+	}
+	// And a finding still wins: a break is a break even if other techniques never answered.
+	unreached.Findings = []Finding{{TechniqueID: "a", Fingerprint: "f"}}
+	if got := unreached.ExitCode(); got != 1 {
+		t.Errorf("unreached scan with a finding = %d, want 1", got)
+	}
+}
+
+func TestUnreachedNeedsTechniquesToHaveBeenSelected(t *testing.T) {
+	// With no techniques selected there was nothing to reach, so this is not a failed run.
+	if (&Scan{}).Unreached() {
+		t.Error("a scan with no techniques selected reported that nothing was reached")
+	}
+	// Partial coverage is coverage: only a total wipeout counts.
+	partial := &Scan{
+		Options:  Options{TechniqueIDs: []string{"a", "b"}},
+		NoAnswer: []string{"a"},
+	}
+	if partial.Unreached() {
+		t.Error("a scan that reached one technique of two reported that nothing was reached")
+	}
+}
+
 func TestSeverityTitleIsReadable(t *testing.T) {
 	// The Markdown report prints this, so an unmapped severity would show as an empty cell.
 	for _, sev := range []tech.Severity{
