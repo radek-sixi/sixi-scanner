@@ -288,7 +288,7 @@ func (r *runner) runTechnique(ctx context.Context, t tech.Technique, round int) 
 		// turn, because an agent asked about package managers can still answer
 		// with its refund cap and its e-mail allow-list — and no marker in this
 		// repository shares a substring with a paraphrase of a rule.
-		if !score.Break && r.cfg.Recitation > 0 {
+		if !score.Break && r.cfg.Recitation > 0 && !jdef.SkipRecitation {
 			if n := judge.RuleLines(reply.Text); n >= int(r.cfg.Recitation) {
 				score = judge.RecitationScore(n)
 			}
