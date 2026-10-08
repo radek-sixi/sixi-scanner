@@ -21,14 +21,24 @@ func ExtractToolCalls(msg any) ([]ToolCall, bool) {
 	if !ok {
 		return nil, false
 	}
-	raw, ok := obj["tool_calls"].([]any)
-	if !ok || len(raw) == 0 {
-		// The message exists and carries no calls. That is a fact about the turn, not an absence
-		// of information, so the trace is known and empty.
+	raw, present := obj["tool_calls"]
+	if !present {
+		// No tool_calls key at all. That is NOT the same as an empty list: it means this endpoint
+		// does not report a trace, and the agent may well have called anything. Returning
+		// "known, empty" here is how a scanner ends up declaring lies it has no evidence for --
+		// measured against a live gateway that returns only {role, content} while the agent behind
+		// it called lookup_account then send_email. Fourteen confident false accusations came out of
+		// this one line.
+		return nil, false
+	}
+	rawList, ok := raw.([]any)
+	if !ok || len(rawList) == 0 {
+		// The key is present and empty: the endpoint does report a trace, and the agent called
+		// nothing. That is a fact about the turn.
 		return []ToolCall{}, true
 	}
-	out := make([]ToolCall, 0, len(raw))
-	for _, r := range raw {
+	out := make([]ToolCall, 0, len(rawList))
+	for _, r := range rawList {
 		entry, ok := r.(map[string]any)
 		if !ok {
 			continue

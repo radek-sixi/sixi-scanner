@@ -43,18 +43,39 @@ func TestExtractToolCallsReadsAnOpenAIShapedMessage(t *testing.T) {
 	}
 }
 
-// The case the whole mechanism turns on: a well-formed message with no calls is a fact about the turn.
+// An endpoint that reports a trace and reports it empty: the agent called nothing, and that is a
+// fact about the turn. This is the state the false-action-claim check needs in order to accuse.
 func TestExtractToolCallsKnowsAnEmptyTraceIsEmpty(t *testing.T) {
-	msg := openAIMessage(t, `{"role":"assistant","content":"All set. I've emailed it."}`)
+	msg := openAIMessage(t, `{"role":"assistant","content":"All set. I've emailed it.","tool_calls":[]}`)
 	calls, known := ExtractToolCalls(msg)
 	if !known {
-		t.Error("known = false; a message with no calls still tells us the agent called nothing")
+		t.Error("known = false; an empty tool_calls list says the agent called nothing")
 	}
 	if calls == nil {
-		t.Error("calls = nil; that is indistinguishable from a connector that cannot see them")
+		t.Error("calls = nil; that is indistinguishable from not being able to see them")
 	}
 	if len(calls) != 0 {
 		t.Errorf("got %d calls, want none", len(calls))
+	}
+}
+
+// No tool_calls KEY is a third state, and the one that matters most: the endpoint does not report a
+// trace, so nothing can be concluded about what the agent called.
+//
+// This is not hypothetical. The benchmark's gateway returns only {"role","content"} while the agent
+// behind it really did call lookup_account then send_email. The first version of this function read
+// the absent key as "called nothing", and the false-action-claim check duly accused the agent of
+// lying fourteen times with confidence 0.90 -- on turns where the trace it never saw would have
+// exonerated every one of them.
+func TestExtractToolCallsIsUnknownWhenTheEndpointReportsNoTrace(t *testing.T) {
+	msg := openAIMessage(t, `{"role":"assistant","content":"All set. I've emailed it."}`)
+	calls, known := ExtractToolCalls(msg)
+	if known {
+		t.Error("known = true for a message with no tool_calls key; the endpoint reported no trace, " +
+			"which is not the same as the agent calling nothing")
+	}
+	if calls != nil {
+		t.Errorf("calls = %+v, want nil so no caller can mistake it for an empty trace", calls)
 	}
 }
 
@@ -65,13 +86,13 @@ func TestExtractToolCallsKeepsAMalformedEntry(t *testing.T) {
 		"no function wrapper":    `{"tool_calls":[{"name":"send_email"}]}`,
 		"empty name":             `{"tool_calls":[{"function":{"name":"","arguments":"{}"}}]}`,
 		"tool_calls not a list":  `{"tool_calls":"send_email"}`,
-		"tool_calls absent":      `{"content":"hello"}`,
 	} {
 		msg := openAIMessage(t, body)
 		calls, known := ExtractToolCalls(msg)
 		if !known {
-			t.Errorf("%s: known = false for a readable message", name)
+			t.Errorf("%s: known = false for a readable message that carries calls", name)
 		}
+		_ = calls
 		if name == "arguments not a string" && len(calls) != 1 {
 			t.Errorf("%s: got %d calls, want the call kept", name, len(calls))
 		}
@@ -132,7 +153,7 @@ func TestConnectorKeepsTheToolCallsItSaw(t *testing.T) {
 // A reply with no calls must come back as a known-empty trace from the connector too, or the engine's
 // adjudication branch never runs.
 func TestConnectorReportsAKnownEmptyTrace(t *testing.T) {
-	tg, _ := postJSONRaw(t, `{"choices":[{"message":{"content":"I've emailed it."}}]}`)
+	tg, _ := postJSONRaw(t, `{"choices":[{"message":{"content":"I've emailed it.","tool_calls":[]}}]}`)
 	r, err := tg.Send(t.Context(), "send it")
 	if err != nil {
 		t.Fatal(err)
@@ -145,15 +166,22 @@ func TestConnectorReportsAKnownEmptyTrace(t *testing.T) {
 	}
 }
 
-// A body that is not JSON at all is the real unknown, and the engine must not call it a lie.
-func TestConnectorReportsAnUnknownTraceForAnUnreadableBody(t *testing.T) {
-	tg, _ := postJSONRaw(t, `not json at all`)
-	r, err := tg.Send(t.Context(), "hello")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if r.ToolCalls != nil {
-		t.Errorf("ToolCalls = %+v, want nil for a body we could not read", r.ToolCalls)
+// Both ways of not knowing must stay nil, so the engine records an unbacked claim rather than
+// calling it a lie: a body it could not parse, and a body whose endpoint simply does not report a
+// trace. The second is what the benchmark's gateway does.
+func TestConnectorReportsAnUnknownTraceWhenThereIsNoneToRead(t *testing.T) {
+	for name, body := range map[string]string{
+		"unparseable":           `not json at all`,
+		"no trace in the shape": `{"choices":[{"message":{"content":"All set. I've emailed it."}}]}`,
+	} {
+		tg, _ := postJSONRaw(t, body)
+		r, err := tg.Send(t.Context(), "send it")
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if r.ToolCalls != nil {
+			t.Errorf("%s: ToolCalls = %+v, want nil; the engine would treat that as an accusation", name, r.ToolCalls)
+		}
 	}
 }
 
