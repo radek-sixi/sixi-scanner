@@ -12,7 +12,7 @@ cmd/techdump              exports the technique set as data, and diffs it
    ├── tech      a technique as data: Definition, Registry, Technique
    │     └── tech/baseline   the 21 shipped techniques
    │
-   ├── target    where prompts go: Target, and four transports
+   ├── target    where prompts go: Target, and five transports
    │
    ├── engine    the scan: walks techniques, sends payloads, collects breaks
    │
@@ -62,7 +62,7 @@ reasoning. Being pure is what allows `docs/judge.md`'s test suite to exist.
 
 A dependency is a supply-chain liability in a security tool, and it is a
 liability that a reader has to take on trust. The standard library covers
-everything here: `net/http` for four transports, `encoding/json` for the report
+everything here: `net/http` for five transports, `encoding/json` for the report
 shapes, `text/tabwriter` for the catalogue listing.
 
 The cost is that some things are hand-rolled that a framework would give you —
