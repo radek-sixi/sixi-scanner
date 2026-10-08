@@ -27,7 +27,7 @@ func cmdScan(args []string, stdout, stderr io.Writer) result {
 
 	var (
 		url       = fs.String("url", "", "endpoint to scan (required unless --target echo)")
-		connector = fs.String("target", "openai", "transport: openai, json, webform, echo")
+		connector = fs.String("target", "openai", "transport: openai, json, chat, webform, echo")
 		headerArg = fs.String("header", "", "extra header, repeatable, as \"Name: value\"")
 
 		model      = fs.String("model", "", "model field for the openai transport")

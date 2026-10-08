@@ -27,6 +27,7 @@ func Registry() *tech.Registry {
 	addSensitiveDisclosure(r)
 	addAgency(r)
 	addMisc(r)
+	addMultiTurn(r)
 	return r
 }
 

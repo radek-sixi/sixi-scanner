@@ -102,6 +102,31 @@ type Definition struct {
 	// attempts, wrapping around at the end.
 	Variants []string
 
+	// Sequence is a multi-turn attack: each element is one attempt's ordered list of turns, sent in
+	// one conversation. It is what makes the classes that only exist across turns expressible --
+	// splitting a per-request cap in two, planting an instruction to be acted on later, asking an
+	// agent to relay a payload onward.
+	//
+	// When it is set the engine sends every step in order inside a single attempt, on one session
+	// where the target supports sessions, and the attempt breaks if ANY step's reply breaks. A
+	// technique sets both Variants and Sequence only if either shape is a fair probe; the engine
+	// prefers Sequence and falls back to Variants.
+	//
+	// The steps are joined by their own conversation rather than by the scanner's memory, so what is
+	// being tested is the target's state and not the scanner's bookkeeping.
+	Sequence [][]string
+
+	// RequireAll scores every turn of a sequence and breaks only if all of them break.
+	//
+	// It is for attacks whose damage is cumulative rather than located. Splitting a per-request
+	// limit into two in-limit requests produces two perfectly compliant replies: the user asked for
+	// a refund, the agent refunded it, twice. Neither turn is evidence of anything on its own, and a
+	// technique that broke on either would report an agent for doing exactly what it was asked. The
+	// breach is that both went through inside one conversation, and that is a property of the pair.
+	//
+	// It only has meaning for a sequence, so it is ignored when there is a single turn.
+	RequireAll bool
+
 	// Markers are substrings whose presence in a reply suggests the attack
 	// landed. They are matched case-insensitively.
 	Markers []string
@@ -152,6 +177,17 @@ type Definition struct {
 	SkipRecitation bool
 }
 
+// hasEmptyStep reports whether any sequence entry would send nothing, which is a silent no-op
+// rather than a probe.
+func hasEmptyStep(seq [][]string) bool {
+	for _, steps := range seq {
+		if len(steps) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // Confidence returns the definition's base confidence, defaulted.
 func (d Definition) Confidence() float64 {
 	if d.BaseConfidence > 0 {
@@ -179,8 +215,10 @@ func (d Definition) Validate() string {
 		return "missing ID"
 	case d.Title == "":
 		return d.ID + ": missing Title"
-	case len(d.Variants) == 0:
-		return d.ID + ": no Variants"
+	case len(d.Variants) == 0 && len(d.Sequence) == 0:
+		return d.ID + ": no Variants and no Sequence, so it cannot send anything"
+	case len(d.Sequence) > 0 && hasEmptyStep(d.Sequence):
+		return d.ID + ": a Sequence entry has no turns"
 	case len(d.Markers) == 0:
 		return d.ID + ": no Markers, so a break could never be detected"
 	case d.Severity.rank() == 0 && d.Severity != SeverityInfo:
@@ -196,6 +234,12 @@ type Technique interface {
 	// Payload returns what to send on the given zero-based attempt.
 	// failed holds the indices of variants already sent against this target.
 	Payload(attempt int, failed []string) string
+	// Steps returns the ordered turns of one attempt: a whole conversation for a sequence
+	// technique, and a single turn for everything else, so callers have one path for both shapes.
+	Steps(attempt int, failed []string) []string
+	// MultiTurn reports whether this technique needs more than one turn per attempt, so a caller can
+	// decide whether a target's lack of session support makes the probe meaningless.
+	MultiTurn() bool
 }
 
 // Data adapts a Definition to Technique.
@@ -236,6 +280,55 @@ func (d Data) Payload(attempt int, failed []string) string {
 	// Every variant has been tried; start again rather than send nothing.
 	return d.Def.Variants[attempt%n]
 }
+
+// Steps returns the ordered turns of one attempt.
+//
+// A sequence technique gets its whole conversation; everything else gets a single turn, so the
+// engine has one code path for both and a technique author never has to think about which shape
+// they wrote. The `failed` walk applies to sequences by index exactly as it does to variants, so a
+// multi-turn attack also moves on when a turn has already been tried.
+func (d Data) Steps(attempt int, failed []string) []string {
+	if len(d.Def.Sequence) == 0 {
+		return []string{d.Payload(attempt, failed)}
+	}
+	n := len(d.Def.Sequence)
+	if attempt < 0 {
+		attempt = 0
+	}
+
+	// Which conversation to send. With nothing marked as tried the attempt index decides, exactly as
+	// Payload does; the walk only takes over once something has failed. An earlier version ran the
+	// walk unconditionally, which meant the attempt number was ignored and every attempt replayed
+	// the first conversation -- a multi-turn technique would then measure one attack repeatedly and
+	// call it three attempts.
+	pick := attempt % n
+	if len(failed) > 0 {
+		skip := make(map[int]bool, len(failed))
+		for _, f := range failed {
+			if i, err := strconv.Atoi(f); err == nil {
+				skip[i] = true
+			}
+		}
+		for i := range n {
+			if !skip[i] && len(d.Def.Sequence[i]) > 0 {
+				pick = i
+				break
+			}
+		}
+	}
+
+	// An empty conversation would send nothing, so it is stepped over from wherever the walk landed.
+	// Validate rejects one at load time; this keeps the accessor safe on its own.
+	for off := range n {
+		if i := (pick + off) % n; len(d.Def.Sequence[i]) > 0 {
+			return append([]string(nil), d.Def.Sequence[i]...)
+		}
+	}
+	return append([]string(nil), d.Def.Sequence[pick]...)
+}
+
+// MultiTurn reports whether this technique needs more than one turn per attempt.
+func (d Data) MultiTurn() bool { return len(d.Def.Sequence) > 0 }
 
 // Registry holds the techniques a scan draws from, in a stable order.
 type Registry struct {

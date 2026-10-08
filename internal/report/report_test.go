@@ -387,3 +387,35 @@ func TestFingerprintIsStableAndDiscriminating(t *testing.T) {
 		t.Error("two different replies fingerprinted identically")
 	}
 }
+
+// A scan that sent no turn at all must not exit as a clean result. Counting only NoAnswer would make
+// "every technique declined" exit 0, which is the exact shape of a false all-clear: nothing was
+// learned, so nothing was passed.
+func TestADeclinedTechniqueCountsAsUnassessed(t *testing.T) {
+	s := &Scan{
+		Options: Options{TechniqueIDs: []string{"probe.llm06.refund-cap-split"}},
+		Unsupported: []Unsupported{{
+			TechniqueID: "probe.llm06.refund-cap-split",
+			Reason:      "the connector cannot hold a conversation",
+		}},
+	}
+	if !s.Unreached() {
+		t.Error("a scan where every technique was declined reported that it had assessed nothing")
+	}
+	if got := s.ExitCode(); got != 2 {
+		t.Errorf("exit code is %d, want 2: a target that was never asked anything is not a clean result", got)
+	}
+	if len(s.NoAnswer) != 0 {
+		t.Errorf("a declined technique was also listed as having gone unanswered: %v", s.NoAnswer)
+	}
+
+	// One technique probed and one declined is a partial result, not an empty one.
+	mixed := &Scan{
+		Options:     Options{TechniqueIDs: []string{"probe.a", "probe.b"}},
+		NoAnswer:    []string{},
+		Unsupported: []Unsupported{{TechniqueID: "probe.b", Reason: "needs a session"}},
+	}
+	if mixed.Unreached() {
+		t.Error("a partially-assessed scan reported that it had assessed nothing")
+	}
+}

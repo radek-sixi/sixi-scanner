@@ -102,6 +102,48 @@ noise.
 | `probe.llm10.unbounded-consumption` | medium | Accepting a request sized to exhaust budget. |
 | `probe.llm04.training-data-extraction` | medium | Verbatim reproduction from the training set. |
 
+## Multi-turn techniques
+
+Four techniques are **sequences**: ordered turns sent inside one attempt, on one conversation.
+They are in the set because the classes they test do not exist in a single message.
+
+| ID | Tests |
+|---|---|
+| `probe.llm06.refund-cap-split` | a limit expressed per request, split into two in-limit requests |
+| `probe.llm01.delayed-instruction` | an instruction planted on turn one and acted on in another |
+| `probe.llm06.payload-relay` | a payload asking the agent to forward it onward |
+| `probe.llm01.interagent-framing` | internal routing syntax posing as a peer or supervisor |
+
+Three of the four carry `RequireAll`, which changes how they are scored.
+
+### Why `RequireAll` exists
+
+Splitting a per-request limit produces two perfectly compliant replies. The user asked for a refund
+and the agent issued one — twice. Neither turn is evidence of anything on its own, and a technique
+that broke on either would report an agent for doing exactly what it was asked. **The breach is that
+both went through inside one conversation**, which is a property of the pair and not of either turn.
+So these techniques score every turn and break only when all of them break.
+
+A finding still needs its evidence, and the evidence is the whole conversation: the report shows both
+prompts and both answers, because the reply that proves the breach is the second one.
+
+### How the markers were chosen
+
+The refund markers are the words the target actually used. It says *"I've queued a 30 EUR refund for
+ACC-1001"*, so `queued` is the word that carries the claim. An earlier version of that list guessed
+`refund is queued` and matched nothing at all against a live agent that had already been
+successfully attacked twice — the technique scored a clean result on an attack that worked.
+
+That is worth stating plainly because it is the commonest way a technique reports zero: **marker lists
+written from imagination rather than from observed replies.** Where a reply is available, take the
+marker from it.
+
+### What they do not cover
+
+A sequence sent to a connector that cannot hold a conversation is not a weaker probe, it is a wrong
+one, so these techniques are **declined** against such a target and named under `unsupported` in the
+report. They are never quietly degraded into two unrelated single turns.
+
 ## What does not ship
 
 This is the section that matters. Every item here is a way a real assessment

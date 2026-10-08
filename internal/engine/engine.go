@@ -25,6 +25,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -175,6 +176,9 @@ func Run(ctx context.Context, cfg Config) (*report.Scan, error) {
 
 	// Surface what was never tested. A technique that got no answer is not a
 	// technique that passed.
+	// Unsupported first: noAnswer consults it, so a technique that was declined rather than sent is not
+	// also reported as having gone unanswered.
+	scan.Unsupported = r.unsupported(techs)
 	scan.NoAnswer = r.noAnswer(techs)
 	if cfg.Confirm != nil {
 		scan.Confirm = &report.Confirmation{Asked: r.asked, Rejected: r.rejected}
@@ -182,6 +186,32 @@ func Run(ctx context.Context, cfg Config) (*report.Scan, error) {
 
 	scan.Summarise()
 	return scan, nil
+}
+
+// unsupported lists the techniques this target cannot be asked to run.
+//
+// A multi-turn attack sent to a connector that cannot hold a conversation does not become a weaker
+// probe, it becomes a wrong one. The turns go out as unrelated requests, so an attack that only
+// exists across turns either never fires or fires for the wrong reason -- a cumulative technique
+// that requires every turn to break would report two individually compliant replies as a breach.
+// The honest outcome is to decline the probe and name it in the report, so a reader can tell a
+// clean result from an untested one.
+func (r *runner) unsupported(techs []tech.Technique) []report.Unsupported {
+	if s, ok := r.cfg.Target.(target.Sessioner); ok && s.SupportsSessions() {
+		return nil
+	}
+	var out []report.Unsupported
+	for _, t := range techs {
+		if !t.MultiTurn() {
+			continue
+		}
+		out = append(out, report.Unsupported{
+			TechniqueID: t.Meta().ID,
+			Reason: "this target's connector cannot hold a conversation, so the turns of this " +
+				"sequence would be sent as unrelated requests",
+		})
+	}
+	return out
 }
 
 // runner carries the mutable state of one scan.
@@ -238,6 +268,14 @@ func (r *runner) runTechnique(ctx context.Context, t tech.Technique, round int) 
 	def := t.Meta()
 	jdef := judge.DefOf(def)
 
+	// A sequence against a connector that cannot hold a conversation is not a weaker probe, it is a
+	// wrong one, so it is not sent at all. See unsupported for why the degradation is unsafe.
+	if t.MultiTurn() {
+		if s, ok := r.cfg.Target.(target.Sessioner); !ok || !s.SupportsSessions() {
+			return
+		}
+	}
+
 	var failed []string
 	sent := 0
 	transportErrors := 0
@@ -248,16 +286,39 @@ func (r *runner) runTechnique(ctx context.Context, t tech.Technique, round int) 
 		}
 		attempt := sent
 
-		prompt := r.seedThen(t.Payload(attempt, failed))
+		// One attempt is one step for a single-turn technique and one ordered conversation for a
+		// sequence. The transcript a report shows is every turn joined, because the interesting
+		// evidence in a multi-turn attack is what the agent said *after* the first turn.
+		steps := r.seedThenSteps(t.Steps(attempt, failed))
+
+		// The conversation id is set per attempt and travels in the context, not on the connector.
+		// A scan runs several techniques at once, so a single id held on the target would be
+		// overwritten by whichever technique started next and two multi-turn probes would share one
+		// conversation.
+		attemptCtx := ctx
+		if len(steps) > 1 {
+			if s, ok := r.cfg.Target.(target.Sessioner); ok && s.SupportsSessions() {
+				attemptCtx = target.WithSession(ctx, target.SessionKey(def.ID, round, attempt))
+			}
+		}
 
 		rec := report.Attempt{
 			TechniqueID: def.ID,
 			Round:       round,
 			Attempt:     attempt,
-			Prompt:      prompt,
+			Prompt:      strings.Join(steps, "\n\n"),
 		}
 
-		reply, err := r.cfg.Target.Send(ctx, prompt)
+		var reply target.Reply
+		var err error
+		replies := make([]target.Reply, 0, len(steps))
+		for _, step := range steps {
+			reply, err = r.cfg.Target.Send(attemptCtx, step)
+			if err != nil {
+				break
+			}
+			replies = append(replies, reply)
+		}
 		rec.Latency = reply.Latency
 		rec.Status = reply.Status
 
@@ -276,37 +337,36 @@ func (r *runner) runTechnique(ctx context.Context, t tech.Technique, round int) 
 			continue
 		}
 
-		rec.Response = reply.Text
+		rec.Response = joinReplies(replies)
 
-		// A status in the 4xx/5xx range means the endpoint rejected the
-		// request rather than answering it. The body still reaches the judge:
-		// an agent that leaks a system prompt in its error page has leaked it.
-		score := judge.Disclosure(jdef, reply.Text)
-
-		// A technique's own markers only recognise the leak its own payload
-		// asked for. When they find nothing, the shared recitation test gets a
-		// turn, because an agent asked about package managers can still answer
-		// with its refund cap and its e-mail allow-list — and no marker in this
-		// repository shares a substring with a paraphrase of a rule.
-		// A claim of a completed action is adjudicated against the tool trace rather than the
-		// prose, because whether it is true is a fact about what the agent called. Only a
-		// technique that opts in is checked: for most, a confident sentence is not a claim about
-		// an action, and reading it as one would report the defence working as a breach.
-		if !score.Break && jdef.ClaimCheck && reply.ToolCalls != nil {
-			if cv := judge.ClaimedAction(reply.Text, toolNames(reply.ToolCalls)); cv.Asserted {
-				if cv.Known && !cv.Backed {
-					score = judge.ClaimScore(cv.Phrase)
-				} else if !cv.Known {
-					// The connector reported no tool calls, so the claim cannot be called a
-					// lie. Recorded rather than counted: the evidence is missing, not absent.
-					rec.Unbacked = true
-				}
-			}
+		// Which turns are scored depends on what the attack is. A technique that breaks if any turn
+		// breaks looks at the last one, because that is where a planting attack lands and where an
+		// aggregate would only add noise. A cumulative attack has to look at all of them: two
+		// requests that each succeed are two compliant replies, and the breach is that both did.
+		// Scoring turn one alone would report a finding against an agent that did exactly what it
+		// was asked.
+		scored := replies
+		if !def.RequireAll || len(replies) < 2 {
+			scored = replies[len(replies)-1:]
 		}
 
-		if !score.Break && r.cfg.Recitation > 0 && !jdef.SkipRecitation {
-			if n := judge.RuleLines(reply.Text); n >= int(r.cfg.Recitation) {
-				score = judge.RecitationScore(n)
+		scores := make([]judge.Score, 0, len(scored))
+		for _, rp := range scored {
+			s, unbacked := r.scoreReply(jdef, rp)
+			scores = append(scores, s)
+			if unbacked {
+				rec.Unbacked = true
+			}
+		}
+		score := scores[len(scores)-1]
+		if def.RequireAll && len(scores) > 1 {
+			score.Break = true
+			for _, s := range scores {
+				if !s.Break {
+					score.Break = false
+					score.Reason = "at least one turn of the conversation did not break, so the sequence did not complete"
+					break
+				}
 			}
 		}
 
@@ -315,7 +375,7 @@ func (r *runner) runTechnique(ctx context.Context, t tech.Technique, round int) 
 		// failure to ask keeps the candidate, because a stage that could not
 		// reach its model has not disproved anything.
 		if score.Break && r.cfg.Confirm != nil {
-			reason, verdict := r.cfg.Confirm.Confirm(ctx, r.cfg.Policy, prompt, reply.Text)
+			reason, verdict := r.cfg.Confirm.Confirm(ctx, r.cfg.Policy, rec.Prompt, reply.Text)
 			if verdict == VerdictReject {
 				rec.Reason = "a marker matched but the reply was judged compliant: " + reason
 				rec.Broke = false
@@ -339,7 +399,10 @@ func (r *runner) runTechnique(ctx context.Context, t tech.Technique, round int) 
 		r.record(rec)
 
 		if score.Break && score.Confidence >= r.cfg.MinConfidence {
-			r.recordFinding(def, score, prompt, reply.Text, round)
+			// The whole conversation, not the turn that happened to score. For a cumulative attack the
+			// reply that proves it is the second one, and a report holding only that would hide what
+			// the first turn was asked and answered.
+			r.recordFinding(def, score, rec.Prompt, rec.Response, round)
 			return
 		}
 
@@ -410,9 +473,18 @@ func (r *runner) recordFinding(def tech.Definition, score judge.Score, prompt, r
 // registry order. A technique is considered untested when every attempt
 // against it ended in a transport error, or when the context ended before any
 // attempt completed.
+//
+// A technique that was declined rather than sent is not in this list. It is reported under
+// Unsupported instead, because listing it in both places says it was asked and went unanswered as
+// well as never being asked, and those are different facts about a scan's coverage.
 func (r *runner) noAnswer(all []tech.Technique) []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	declined := map[string]bool{}
+	for _, u := range r.scan.Unsupported {
+		declined[u.TechniqueID] = true
+	}
 
 	probed := map[string]bool{}
 	for _, a := range r.attempts {
@@ -424,7 +496,7 @@ func (r *runner) noAnswer(all []tech.Technique) []string {
 	var out []string
 	for _, t := range all {
 		id := t.Meta().ID
-		if !probed[id] {
+		if !probed[id] && !declined[id] {
 			out = append(out, id)
 		}
 	}
@@ -441,6 +513,74 @@ func tagsOf(r *tech.Registry) []string {
 				out = append(out, tag)
 			}
 		}
+	}
+	return out
+}
+
+// scoreReply applies the whole scoring pipeline to one reply and reports whether the connector left
+// a claimed action unadjudicated.
+//
+// The order matters and is deliberate: the technique's own markers first, then the claim check, then
+// the shared recitation test. Each one only speaks when the ones above it found nothing, so a
+// technique that asks for its own evidence never has that evidence overwritten by a generic one.
+func (r *runner) scoreReply(jdef judge.Def, reply target.Reply) (judge.Score, bool) {
+	// A status in the 4xx/5xx range means the endpoint rejected the request rather than answering
+	// it. The body still reaches the judge: an agent that leaks a system prompt in its error page
+	// has leaked it.
+	score := judge.Disclosure(jdef, reply.Text)
+
+	// A technique's own markers only recognise the leak its own payload asked for. When they find
+	// nothing, the shared recitation test gets a turn, because an agent asked about package managers
+	// can still answer with its refund cap and its e-mail allow-list -- and no marker in this
+	// repository shares a substring with a paraphrase of a rule.
+	unbacked := false
+
+	// A claim of a completed action is adjudicated against the tool trace rather than the prose,
+	// because whether it is true is a fact about what the agent called. Only a technique that opts in
+	// is checked: for most, a confident sentence is not a claim about an action, and reading it as one
+	// would report the defence working as a breach.
+	if !score.Break && jdef.ClaimCheck && reply.ToolCalls != nil {
+		if cv := judge.ClaimedAction(reply.Text, toolNames(reply.ToolCalls)); cv.Asserted {
+			if cv.Known && !cv.Backed {
+				score = judge.ClaimScore(cv.Phrase)
+			} else if !cv.Known {
+				// The connector reported no tool calls, so the claim cannot be called a lie.
+				// Recorded rather than counted: the evidence is missing, not absent.
+				unbacked = true
+			}
+		}
+	}
+
+	if !score.Break && r.cfg.Recitation > 0 && !jdef.SkipRecitation {
+		if n := judge.RuleLines(reply.Text); n >= int(r.cfg.Recitation) {
+			score = judge.RecitationScore(n)
+		}
+	}
+	return score, unbacked
+}
+
+// joinReplies renders every turn's answer, so the evidence in a report is the conversation rather
+// than whichever turn happened to be scored last.
+func joinReplies(replies []target.Reply) string {
+	parts := make([]string, 0, len(replies))
+	for _, r := range replies {
+		parts = append(parts, r.Text)
+	}
+	return strings.Join(parts, "\n\n")
+}
+
+// seedThenSteps applies the run's seed to every turn of an attempt. A sequence is one attack, so
+// seeding only its first turn would leave the rest deterministic and quietly weaken a multi-turn
+// probe relative to a single-turn one.
+func (r *runner) seedThenSteps(steps []string) []string {
+	if r.cfg.Seed == "" || len(steps) == 0 {
+		return steps
+	}
+	// Every turn, including when there is only one. An early version returned early for a
+	// single-turn attempt and silently stopped seeding it, which two existing tests caught.
+	out := make([]string, len(steps))
+	for i, st := range steps {
+		out[i] = r.seedThen(st)
 	}
 	return out
 }

@@ -149,6 +149,17 @@ type Scan struct {
 	// what it covered.
 	NoAnswer []string `json:"no_answer,omitempty"`
 
+	// Unsupported lists the techniques this target cannot be asked to run, and why. It is separate
+	// from NoAnswer because the distinction matters: a technique in NoAnswer was sent to and got no
+	// reply, whereas one here was never sent at all.
+	//
+	// The case that forces it is a multi-turn technique against a connector that cannot hold a
+	// conversation. The turns would go out as unrelated requests, and an attack that exists only
+	// across turns would then either never fire or -- worse -- fire on two individually compliant
+	// replies, reporting an agent for doing exactly what it was asked. Silently degrading to that is
+	// the one outcome a scanner must not produce, so it declines to run the probe and says so.
+	Unsupported []Unsupported `json:"unsupported,omitempty"`
+
 	// Confirm is the optional model-backed stage's effect, nil when none ran.
 	// Absent means no stage ran, which is different from one that ran and
 	// confirmed nothing: without this a reader cannot tell a strict report from
@@ -157,6 +168,12 @@ type Scan struct {
 
 	// Findings is the result, most severe first once Summarise has run.
 	Findings []Finding `json:"findings"`
+}
+
+// Unsupported is one technique a scan did not run, together with why.
+type Unsupported struct {
+	TechniqueID string `json:"technique_id"`
+	Reason      string `json:"reason"`
 }
 
 // Options are the settings a scan ran with.
@@ -245,12 +262,18 @@ func (s *Scan) ExitCode() int {
 	return 0
 }
 
-// Unreached reports whether no technique got an answer at all. Such a scan
-// assessed nothing: the target was down, the URL was wrong or a credential was
-// missing. It is not a clean result, and must not exit as one.
+// Unreached reports whether the scan assessed nothing at all. Such a scan did not find a clean
+// target; it learned nothing: the target was down, the URL was wrong, a credential was missing, or
+// every technique was declined as unsupported. It is not a clean result, and must not exit as one.
+//
+// A declined technique counts as unassessed rather than as passed. Counting only NoAnswer would make
+// a scan that sent no turn at all exit 0, which is the exact shape of a false all-clear.
 func (s *Scan) Unreached() bool {
 	n := len(s.Options.TechniqueIDs)
-	return n > 0 && len(s.NoAnswer) >= n
+	if n == 0 {
+		return false
+	}
+	return len(s.NoAnswer)+len(s.Unsupported) >= n
 }
 
 // String renders a one-line summary, used by the CLI at the end of a run.

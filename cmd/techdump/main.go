@@ -46,12 +46,16 @@ type record struct {
 	Severity    string   `json:"severity"`
 	Description string   `json:"description"`
 	Remediation string   `json:"remediation,omitempty"`
-	Variants    []string `json:"variants"`
-	Markers     []string `json:"markers"`
-	Negations   []string `json:"negations,omitempty"`
-	MinMarkers  int      `json:"min_markers"`
-	Confidence  float64  `json:"confidence"`
-	Tags        []string `json:"tags,omitempty"`
+	Variants    []string `json:"variants,omitempty"`
+	// Sequence carries the multi-turn payloads. It is exported for the same reason Variants is:
+	// without it, comparing two versions would show the new techniques as having lost their
+	// payloads rather than as having changed shape.
+	Sequence   [][]string `json:"sequence,omitempty"`
+	Markers    []string   `json:"markers"`
+	Negations  []string   `json:"negations,omitempty"`
+	MinMarkers int        `json:"min_markers"`
+	Confidence float64    `json:"confidence"`
+	Tags       []string   `json:"tags,omitempty"`
 }
 
 // dump is the whole export.
@@ -134,6 +138,7 @@ func collect(reg *tech.Registry) []record {
 			Severity: string(d.Severity), Description: d.Description,
 			Remediation: d.Remediation,
 			Variants:    append([]string(nil), d.Variants...),
+			Sequence:    append([][]string(nil), d.Sequence...),
 			Markers:     append([]string(nil), d.Markers...),
 			Negations:   append([]string(nil), d.Negations...),
 			MinMarkers:  d.Minimum(), Confidence: d.Confidence(),

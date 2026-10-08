@@ -45,6 +45,14 @@ func writeFindingsTo(w io.Writer, scan *report.Scan) {
 			fmt.Fprintf(w, "  - %s\n", id)
 		}
 	}
+	// Kept separate from the list above: a technique here was never sent, not sent-and-ignored. The
+	// distinction is the difference between "we asked and it held" and "we could not ask".
+	if len(scan.Unsupported) > 0 {
+		fmt.Fprintf(w, "\nNot tested (this target cannot run them):\n")
+		for _, u := range scan.Unsupported {
+			fmt.Fprintf(w, "  - %s: %s\n", u.TechniqueID, u.Reason)
+		}
+	}
 	if len(scan.Findings) == 0 {
 		return
 	}

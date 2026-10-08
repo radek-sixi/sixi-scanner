@@ -181,7 +181,7 @@ func TestEchoFallsBackWhenTheScriptRunsOut(t *testing.T) {
 func TestConnectorRegistry(t *testing.T) {
 	names := Names()
 	joined := strings.Join(names, " ")
-	for _, want := range []string{"echo", "openai", "json", "webform"} {
+	for _, want := range []string{"echo", "openai", "json", "chat", "webform"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("connector %q is not registered; names = %v", want, names)
 		}

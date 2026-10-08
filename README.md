@@ -10,7 +10,7 @@ evidence.
 $ sixi-scanner scan --url https://your-agent.example/v1/chat/completions
 ```
 
-21 techniques · Go standard library only, zero dependencies · reports as JSON,
+26 techniques · Go standard library only, zero dependencies · reports as JSON,
 SARIF 2.1.0 or Markdown · Apache 2.0.
 
 **Radoslaw Brus** · [github.com/rbrus/sixi-scanner](https://github.com/rbrus/sixi-scanner)
@@ -156,6 +156,7 @@ $ sixi-scanner scan --url https://your-agent.example/v1/chat/completions \
 |---|---|---|
 | `openai` | OpenAI-compatible `/chat/completions` | `--url`, optionally `--model` |
 | `json` | Anything, with a described request and reply shape | `--url`, `--body`, `--reply-path` |
+| `chat` | An endpoint that keeps a conversation, one probe per turn | `--url` |
 | `webform` | An HTML form | `--url`, `--field` |
 | `echo` | Nothing — an in-process target for demos and CI | nothing |
 
@@ -167,6 +168,30 @@ response, with numeric segments for arrays:
 ```console
 --body '{"q":{{json}}}' --reply-path data.0.answer.text
 ```
+
+### Multi-turn probes
+
+Some attacks only exist across a conversation: a limit expressed per request,
+an instruction planted on one turn and acted on in the next, a payload that
+asks to be relayed onward. Those are **sequences** -- ordered turns sent inside
+one attempt -- and they need a target that can hold a conversation. Point
+`--target chat` at an endpoint that takes `{"message", "session_id"}` and
+answers `{"reply"}`, and they run:
+
+```console
+$ sixi-scanner scan --target chat --url https://agent.example/chat
+```
+
+Each attempt gets its own conversation, and the conversation id travels per
+request rather than living on the connector, so techniques running at the same
+time cannot end up inside each other's sessions.
+
+Against a connector that cannot hold a conversation, these probes are **not
+sent at all**. Sending them anyway would not weaken them, it would corrupt
+them: the turns would go out as unrelated requests, and a probe that requires
+every turn to break would then report two individually compliant replies as a
+breach. They are listed under `unsupported` in the report, and a scan that
+could run nothing exits 2 rather than passing.
 
 ## Output
 

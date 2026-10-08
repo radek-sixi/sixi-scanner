@@ -53,8 +53,16 @@ func TestJSONExportIsWellFormed(t *testing.T) {
 		t.Errorf("missing provenance: %+v", d)
 	}
 	for _, r := range d.Techniques {
-		if r.ID == "" || r.Title == "" || len(r.Variants) == 0 || len(r.Markers) == 0 {
+		// A technique is sendable if it has either shape of payload. Checking only Variants would
+		// have flagged the multi-turn techniques as broken rather than as a different shape.
+		if r.ID == "" || r.Title == "" || len(r.Markers) == 0 ||
+			(len(r.Variants) == 0 && len(r.Sequence) == 0) {
 			t.Errorf("incomplete record: %+v", r)
+		}
+		for _, steps := range r.Sequence {
+			if len(steps) == 0 {
+				t.Errorf("empty sequence entry: %+v", r)
+			}
 		}
 	}
 }
