@@ -10,7 +10,7 @@ evidence.
 $ sixi-scanner scan --url https://your-agent.example/v1/chat/completions
 ```
 
-26 techniques · Go standard library only, zero dependencies · reports as JSON,
+27 techniques · Go standard library only, zero dependencies · reports as JSON,
 SARIF 2.1.0 or Markdown · Apache 2.0.
 
 **Radoslaw Brus** · [github.com/rbrus/sixi-scanner](https://github.com/rbrus/sixi-scanner)

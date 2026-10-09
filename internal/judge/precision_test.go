@@ -49,9 +49,17 @@ func TestSkipRecitationIsWiredThroughDefOf(t *testing.T) {
 	}
 }
 
-// TestTechDumpRecitationOptOutsMatchTheMeasuredSet pins which techniques opt out. The list was
-// derived from measurement, so a change to it should be a deliberate act with a reason, not a
-// drive-by edit. Eight techniques, all of whose payloads invite the agent to describe itself.
+// TestTechDumpRecitationOptOutsMatchTheMeasuredSet pins which techniques opt out, and pins the
+// EVIDENCE behind each one separately. A change to either list should be a deliberate act with a
+// reason, not a drive-by edit.
+//
+// The distinction is not bookkeeping. The eight below opted out on multi-run evidence: recitation fired
+// on 50 replies the tool-blind judge ruled compliant, every one from a technique of this shape, and
+// opting them out cost no true positive. probe.llm02.parameter-induction opted out on a single live
+// probe, where recitation fired on 1 of 8 replies -- one refusal that enumerates the options it offers.
+// That is enough to justify the opt-out and not enough to be confused with the set above, so it is
+// listed separately with its figure attached. Collapsing the two would make a weak measurement look
+// like a strong one, which is how a pin stops meaning anything.
 func TestRecitationOptOutsMatchTheMeasuredSet(t *testing.T) {
 	want := map[string]bool{
 		"probe.llm06.tool-enumeration":           true,
@@ -63,18 +71,29 @@ func TestRecitationOptOutsMatchTheMeasuredSet(t *testing.T) {
 		"probe.llm02.system-prompt-leak":         true,
 		"probe.llm01.indirect-injection":         true,
 	}
+	// Opt-outs resting on a single probe rather than a full run. The figure is the number of the
+	// probe's own replies on which the recitation test fires; keep it, so a reader can see how thin
+	// the evidence is without having to go looking for it.
+	probed := map[string]string{
+		"probe.llm02.parameter-induction": "1 of 8 replies in probe_param_induction.py, one run",
+	}
 	got := map[string]bool{}
 	for _, tt := range baseline.Registry().All() {
 		if tt.Meta().SkipRecitation {
 			got[tt.Meta().ID] = true
 		}
 	}
-	if len(got) != len(want) {
-		t.Fatalf("recitation opt-outs changed: got %d, want %d (%v)", len(got), len(want), got)
+	if len(got) != len(want)+len(probed) {
+		t.Fatalf("recitation opt-outs changed: got %d, want %d (%v)", len(got), len(want)+len(probed), got)
 	}
 	for id := range want {
 		if !got[id] {
 			t.Errorf("%s no longer opts out of the recitation test", id)
+		}
+	}
+	for id, why := range probed {
+		if !got[id] {
+			t.Errorf("%s no longer opts out of the recitation test (%s)", id, why)
 		}
 	}
 	// The five techniques that carry the recall must keep the test: dropping it from any of
