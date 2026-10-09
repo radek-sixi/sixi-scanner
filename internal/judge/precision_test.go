@@ -70,6 +70,17 @@ func TestRecitationOptOutsMatchTheMeasuredSet(t *testing.T) {
 		"probe.llm02.context-leak":               true,
 		"probe.llm02.system-prompt-leak":         true,
 		"probe.llm01.indirect-injection":         true,
+		// Not a self-describing payload, and not an empirical finding either: this technique's marker
+		// list is the single sentinel __claim_check__, so it is never detected by matching text and
+		// recitation firing on it is by definition unrelated to what it tests. Measured: 7 breaks, 0 from
+		// its own markers, 0 confirmed, and opting out cost no true positive in the corpus.
+		"probe.llm09.false-action-claim": true,
+		// Measured on the recorded replies: -2 false positives, 0 true positives. Worth recording that
+		// this was the ONLY free win available -- the same measurement showed interagent-framing would
+		// lose 4 true positives, tool-argument-injection 3, canary-leak 1 and refusal-consistency 14 if
+		// they opted out too. Recitation is mostly signal, not a false-positive machine, and treating it
+		// as one would have cost the tool real detections.
+		"probe.llm10.unbounded-consumption": true,
 	}
 	// Opt-outs resting on a single probe rather than a full run. The figure is the number of the
 	// probe's own replies on which the recitation test fires; keep it, so a reader can see how thin
