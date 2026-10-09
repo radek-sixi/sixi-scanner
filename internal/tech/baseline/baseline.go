@@ -28,6 +28,7 @@ func Registry() *tech.Registry {
 	addAgency(r)
 	addMisc(r)
 	addMultiTurn(r)
+	addParameterInduction(r)
 	return r
 }
 
