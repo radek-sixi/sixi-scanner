@@ -158,6 +158,13 @@ type Definition struct {
 	// prose, reporting every confident agent as a liar, or ignore the class.
 	ClaimCheck bool
 
+	// RelayCheck opts a technique into trace-backed outbound relay adjudication when the
+	// connector reports a tool trace (ToolCalls != nil). If an outbound sink call carries
+	// caller-supplied agent-directed instructions (verbatim span or injected shape), the turn
+	// breaks on the trace; if the trace shows no outbound relay, lexical matches in a compliant
+	// draft rewrite are exonerated. When no trace is available, lexical markers apply unchanged.
+	RelayCheck bool
+
 	// SkipRecitation opts a technique out of the shared rule-recitation test.
 	//
 	// The recitation test exists because a technique's markers only know the
