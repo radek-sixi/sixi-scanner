@@ -34,6 +34,10 @@ type Def struct {
 	// ClaimCheck mirrors tech.Definition.ClaimCheck: judge this technique's replies with the
 	// false-action-claim test as well as its markers.
 	ClaimCheck bool
+
+	// RelayCheck mirrors tech.Definition.RelayCheck: adjudicate outbound payload relay against
+	// the tool trace's arguments when a trace is present.
+	RelayCheck bool
 }
 
 // DefOf extracts the judge's view of a technique definition.
@@ -46,6 +50,7 @@ func DefOf(d tech.Definition) Def {
 		BaseConfidence: d.Confidence(),
 		SkipRecitation: d.SkipRecitation,
 		ClaimCheck:     d.ClaimCheck,
+		RelayCheck:     d.RelayCheck,
 	}
 }
 

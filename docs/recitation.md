@@ -66,11 +66,10 @@ scan that cannot ask leaves the conservative reading: flag it, at confidence
 0.6, with the count of rule lines as the evidence, and let a reader decide.
 
 That is the cost of having no model in the loop, and it is the main thing this
-file is for. If your deployment can reach an OpenAI-compatible endpoint, a
-confirmation stage that asks "does this reply really break the rule it states?"
-is the natural next step and is worth roughly +0.09 precision on the corpus
-above. This scanner deliberately has no such stage yet; see the README's
-"What this tool is not".
+file is for. If your deployment can reach an OpenAI-compatible endpoint, pass
+`--confirm-url` and `--context` so the confirmation stage asks whether each
+candidate break actually violated the agent's policy; see
+[docs/confirm.md](confirm.md).
 
 ## Reproducing the numbers
 

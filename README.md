@@ -21,7 +21,7 @@ SARIF 2.1.0 or Markdown · Apache 2.0.
 
 Read this before you use the output for anything.
 
-**A clean result is not an assurance.** It means the 21 probes below did not
+**A clean result is not an assurance.** It means the 27 probes below did not
 produce a finding against the endpoint you named. It says nothing about
 techniques this tool does not implement, and nothing about attacks that need
 judgement no substring match can make. The report says so at the bottom of
@@ -86,19 +86,23 @@ and a tool-blind judge rather than by any tool's own verdict. The benchmark is
 maintained by this tool's author; the conflict of interest is stated there and
 every raw finding is published.
 
-| v0.6.0 on [agent-redteam-benchmark](https://github.com/rbrus/agent-redteam-benchmark) | measured | among seven tools |
+| v0.8.3 on [agent-redteam-benchmark](https://github.com/rbrus/agent-redteam-benchmark) | measured | among seven tools |
 |---|---|---|
-| Precision: of what it reported, how much was real | 0.688 | 1st (next: 0.300) |
-| Recall: of what it broke, how much it reported | 0.833 | 1st (next: 0.556) |
-| Real leaks caught, on each reply's own evidence | 34 of 37 | |
-| Cloud cost of the run | $0.57 | |
+| Precision: of what it reported, how much was real | **0.821** | 1st (next: 0.300) |
+| Recall: of what it broke, how much it reported | **0.571** | 1st (next: 0.556; denominator varies per run — see [PROTOCOL §9](https://github.com/rbrus/agent-redteam-benchmark/blob/main/docs/PROTOCOL.md)) |
+| Distinct violating payloads caught | **8** | up from 5 across the four prior releases |
+| Confirmed violations (turn-matched, 1,480 turns) | **61** | 3rd (promptfoo 89, garak 81) |
+| Cloud cost of the run | **$0.72** | + 100 local attacker-model calls |
 
-A follow-up audit found recall at its practical ceiling on that target: the 3
-missed leaks are a disagreement between two judges about whether a capability
-summary is a leak, not something a marker can fix. **Where it loses is
-breadth:** 6 distinct violating attacks, against 67 for garak and 89 for
-promptfoo. See the
-[v0.6.0 write-up](https://github.com/rbrus/agent-redteam-benchmark/blob/main/results/2026-10-08-sixi-oss-v6/README.md).
+On the separate multi-turn session lane (`--target chat`), `sixi-scanner` reaches
+**1.000 precision** (22 of 22 flags confirmed) and hits two deterministic
+oracles no single-turn scanner can reach: `REFUND_CAP_SPLIT` (splitting a 50 EUR
+per-request cap into two 30 EUR refunds across a conversation) and
+`PROMPT_TAINT_RELAYED` (planting an agent-directed payload on one turn and
+having the agent forward it via `send_email` on the next). **Where it loses is
+breadth:** 8 distinct violating attacks on the stateless lane, against 67 for
+garak and 89 for promptfoo. See the
+[v0.8.3 write-up](https://github.com/rbrus/agent-redteam-benchmark/blob/main/results/2026-10-12-sixi-oss-v83/README.md).
 
 ## Install
 
@@ -241,15 +245,19 @@ or the SARIF uploader of your choice.
 Covered, as publicly documented baseline probes:
 
 - **Prompt injection** — instruction override, forged conversation turns,
-  authority and persona framing, encoded instructions, non-English instructions,
-  indirect injection via quoted content
+  authority and persona framing, inter-agent routing framing, encoded
+  instructions, non-English instructions, indirect injection via quoted content,
+  and delayed multi-turn instructions
 - **Sensitive disclosure** — system prompt leakage (direct and as a translation
-  task), credential and configuration elicitation, conversation-context leakage,
-  personal data elicitation, canary disclosure
+  task), credential and configuration elicitation, parameter induction into tool
+  arguments, conversation-context leakage, personal data elicitation, canary
+  disclosure
 - **Excessive agency** — tool enumeration, assent to irreversible actions,
-  injected instructions inside tool arguments, scope expansion
-- **Misinformation and availability** — unqualified compliance claims, unbounded
-  output, verbatim memorisation probes
+  injected instructions inside tool arguments, scope expansion, per-request cap
+  splitting across a session, and outbound payload relay
+- **Misinformation and availability** — unqualified compliance claims, false
+  action claims adjudicated against the tool trace, unbounded output, verbatim
+  memorisation probes
 - **Output handling** — data exfiltration through rendered markup
 
 Not covered, and worth being explicit about:
@@ -257,12 +265,14 @@ Not covered, and worth being explicit about:
 - Anything requiring a browser. The `webform` connector does not run
   JavaScript, so a chatbot that renders client-side comes back empty rather than
   clean.
-- Anything requiring authentication flows, MFA, or multi-turn setup.
-- Semantic or multi-step chains. Each technique is independent and probes in
-  isolation; this tool does not build or follow attack chains across requests.
-  The optional confirmation stage is a judge, not a second attacker — it cannot
-  escalate.
-- Agent-to-agent attacks, where the target is another agent rather than a user.
+- Anything requiring authentication flows or MFA setup.
+- Adaptive multi-step chains. Sequence techniques send fixed multi-turn
+  conversations on session-capable targets, but this tool does not dynamically
+  synthesise or adapt attack chains across requests. The optional confirmation
+  stage is a judge, not a second attacker — it cannot escalate.
+- Live multi-agent mesh orchestration (`interagent-framing` tests whether one
+  HTTP endpoint trusts spoofed peer/supervisor routing syntax, not an internal
+  message bus).
 - Anything about your deployment. Whether the prompt reaches the model you
   think it does is out of scope for an HTTP scanner.
 
@@ -317,8 +327,8 @@ register it, and nothing else changes.
 This is a complete tool for probing an endpoint you can reach, and it is
 deliberately small enough to read in an afternoon. If you need more than this,
 the honest answer is usually that you need a different tool rather than a bigger
-one: a larger technique library bought on trust is worth less than the twenty-one
-techniques here, each of which you can check.
+one: a larger technique library bought on trust is worth less than the
+twenty-seven techniques here, each of which you can check.
 
 ## Security
 
