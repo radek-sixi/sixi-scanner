@@ -338,7 +338,7 @@ narrow: only scan endpoints you own or are authorised to test in writing.
 
 ## Author
 
-Radek (Sixi). Issues and pull requests welcome — see
+Radek (Sixi) Issues and pull requests welcome — see
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 This is a personal project. It is not affiliated with, endorsed by, or derived

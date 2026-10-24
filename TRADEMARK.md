@@ -2,7 +2,7 @@
 
 ## The mark
 
-**Sixi Scanner** and **sixi-scanner** are marks of Radek (Sixi).
+**Sixi Scanner** and **sixi-scanner** are marks of Radek (Sixi)
 
 The code in this repository is licensed under the Apache License 2.0. The name is
 not, and the licence does not cover it.

@@ -1,6 +1,6 @@
 # Support
 
-Sixi Scanner is a personal project by Radek (Sixi). It is free, complete and
+Sixi Scanner is a personal project by Radek (Sixi) It is free, complete and
 Apache 2.0, and it does not need a support contract to work.
 
 ## If something is broken
