@@ -1,6 +1,6 @@
 # Support
 
-Sixi Scanner is a personal project by Radoslaw Brus. It is free, complete and
+Sixi Scanner is a personal project by Radoslaw B. It is free, complete and
 Apache 2.0, and it does not need a support contract to work.
 
 ## If something is broken
@@ -34,7 +34,7 @@ honest answer is usually a custom judge rather than another technique.
 The code is Apache 2.0 and you may use it commercially, fork it, and change
 every line of it.
 
-The name is not. "Sixi Scanner" is a trademark of Radoslaw Brus and Apache 2.0
+The name is not. "Sixi Scanner" is a trademark of Radoslaw B. and Apache 2.0
 grants no rights to it. You do not need permission to use the tool, link to it,
 name it in an assessment, or build your own version under your own name. You do
 need permission to ship a modified version as Sixi Scanner or to put the name on

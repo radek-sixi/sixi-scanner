@@ -13,7 +13,7 @@ $ sixi-scanner scan --url https://your-agent.example/v1/chat/completions
 27 techniques · Go standard library only, zero dependencies · reports as JSON,
 SARIF 2.1.0 or Markdown · Apache 2.0.
 
-**Radoslaw Brus** · [github.com/rbrus/sixi-scanner](https://github.com/rbrus/sixi-scanner)
+**Radoslaw B.** · [github.com/rbrus/sixi-scanner](https://github.com/rbrus/sixi-scanner)
 
 ---
 
@@ -338,7 +338,7 @@ narrow: only scan endpoints you own or are authorised to test in writing.
 
 ## Author
 
-Radoslaw Brus. Issues and pull requests welcome — see
+Radoslaw B. Issues and pull requests welcome — see
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 This is a personal project. It is not affiliated with, endorsed by, or derived

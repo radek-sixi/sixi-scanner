@@ -2,7 +2,7 @@
 
 ## The mark
 
-**Sixi Scanner** and **sixi-scanner** are marks of Radoslaw Brus.
+**Sixi Scanner** and **sixi-scanner** are marks of Radoslaw B.
 
 The code in this repository is licensed under the Apache License 2.0. The name is
 not, and the licence does not cover it.
@@ -87,7 +87,7 @@ about what that means.
 If you redistribute this code, keep `NOTICE`. If you want to be explicit about
 provenance in your own docs, the honest and complete form is:
 
-> Sixi Scanner — by Radoslaw Brus, <https://github.com/rbrus/sixi-scanner>.
+> Sixi Scanner — by Radoslaw B., <https://github.com/rbrus/sixi-scanner>.
 > Licensed Apache 2.0.
 
 Attribution is a licence obligation and a courtesy. The courtesy costs nothing
