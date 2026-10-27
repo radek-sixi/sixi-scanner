@@ -1,9 +1,9 @@
 package tech
 
 import (
+	"regexp"
 	"sort"
 	"strconv"
-	"regexp"
 	"strings"
 )
 
