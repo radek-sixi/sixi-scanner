@@ -29,10 +29,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rbrus/sixi-scanner/internal/judge"
-	"github.com/rbrus/sixi-scanner/internal/report"
-	"github.com/rbrus/sixi-scanner/internal/target"
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/judge"
+	"github.com/radek-sixi/sixi-scanner/internal/report"
+	"github.com/radek-sixi/sixi-scanner/internal/target"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // Config is everything a run needs.

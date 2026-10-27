@@ -1,6 +1,6 @@
 package baseline
 
-import "github.com/rbrus/sixi-scanner/internal/tech"
+import "github.com/radek-sixi/sixi-scanner/internal/tech"
 
 // The shared refusals. These are what a correctly guarded agent says when it
 // declines, and they are the single most useful thing to have when writing a

@@ -1,6 +1,6 @@
 package baseline
 
-import "github.com/rbrus/sixi-scanner/internal/tech"
+import "github.com/radek-sixi/sixi-scanner/internal/tech"
 
 // Parameter induction: the secret never has to appear in the reply. It only has to end up in an
 // argument the agent hands to a tool, and the reply can be a perfectly clean "done".

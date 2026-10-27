@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rbrus/sixi-scanner/internal/report"
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/report"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // A report file is the artifact a CI job archives and a reviewer opens. Two failure modes matter:

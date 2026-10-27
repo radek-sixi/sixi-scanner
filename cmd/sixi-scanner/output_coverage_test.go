@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rbrus/sixi-scanner/internal/report"
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/report"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // A report is often filed by extension rather than by flag, so the mapping from ".sarif" to a

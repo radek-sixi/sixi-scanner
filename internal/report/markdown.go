@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // WriteMarkdown writes the scan as a document a person can read and forward.

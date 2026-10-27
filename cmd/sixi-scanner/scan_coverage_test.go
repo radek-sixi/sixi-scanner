@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/rbrus/sixi-scanner/internal/report"
+	"github.com/radek-sixi/sixi-scanner/internal/report"
 )
 
 // safeBuffer is a bytes.Buffer that survives the concurrent writes the progress printer makes.

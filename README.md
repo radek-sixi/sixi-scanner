@@ -1,6 +1,6 @@
 # Sixi Scanner
 
-[![CI](https://github.com/rbrus/sixi-scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/rbrus/sixi-scanner/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/rbrus/sixi-scanner)](https://github.com/rbrus/sixi-scanner/releases) [![Go Reference](https://pkg.go.dev/badge/github.com/rbrus/sixi-scanner.svg)](https://pkg.go.dev/github.com/rbrus/sixi-scanner) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Benchmark](https://img.shields.io/badge/benchmark-1st%20precision%20%26%20recall-orange)](https://github.com/rbrus/agent-redteam-benchmark)
+[![CI](https://github.com/radek-sixi/sixi-scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/radek-sixi/sixi-scanner/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/radek-sixi/sixi-scanner)](https://github.com/radek-sixi/sixi-scanner/releases) [![Go Reference](https://pkg.go.dev/badge/github.com/radek-sixi/sixi-scanner.svg)](https://pkg.go.dev/github.com/radek-sixi/sixi-scanner) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Benchmark](https://img.shields.io/badge/benchmark-1st%20precision%20%26%20recall-orange)](https://github.com/radek-sixi/agent-redteam-benchmark)
 
 A command-line red-team scanner for LLM agents. It sends probe prompts to an
 endpoint you are authorised to test, judges the replies, and writes out the
@@ -13,7 +13,7 @@ $ sixi-scanner scan --url https://your-agent.example/v1/chat/completions
 27 techniques · Go standard library only, zero dependencies · reports as JSON,
 SARIF 2.1.0 or Markdown · Apache 2.0.
 
-**Radoslaw B.** · [github.com/rbrus/sixi-scanner](https://github.com/rbrus/sixi-scanner)
+**Radoslaw B.** · [github.com/radek-sixi/sixi-scanner](https://github.com/radek-sixi/sixi-scanner)
 
 ---
 
@@ -86,10 +86,10 @@ and a tool-blind judge rather than by any tool's own verdict. The benchmark is
 maintained by this tool's author; the conflict of interest is stated there and
 every raw finding is published.
 
-| v0.8.3 on [agent-redteam-benchmark](https://github.com/rbrus/agent-redteam-benchmark) | measured | among seven tools |
+| v0.8.3 on [agent-redteam-benchmark](https://github.com/radek-sixi/agent-redteam-benchmark) | measured | among seven tools |
 |---|---|---|
 | Precision: of what it reported, how much was real | **0.821** | 1st (next: 0.300) |
-| Recall: of what it broke, how much it reported | **0.571** | 1st (next: 0.556; denominator varies per run — see [PROTOCOL §9](https://github.com/rbrus/agent-redteam-benchmark/blob/main/docs/PROTOCOL.md)) |
+| Recall: of what it broke, how much it reported | **0.571** | 1st (next: 0.556; denominator varies per run — see [PROTOCOL §9](https://github.com/radek-sixi/agent-redteam-benchmark/blob/main/docs/PROTOCOL.md)) |
 | Distinct violating payloads caught | **8** | up from 5 across the four prior releases |
 | Confirmed violations (turn-matched, 1,480 turns) | **61** | 3rd (promptfoo 89, garak 81) |
 | Cloud cost of the run | **$0.72** | + 100 local attacker-model calls |
@@ -102,18 +102,18 @@ per-request cap into two 30 EUR refunds across a conversation) and
 having the agent forward it via `send_email` on the next). **Where it loses is
 breadth:** 8 distinct violating attacks on the stateless lane, against 67 for
 garak and 89 for promptfoo. See the
-[v0.8.3 write-up](https://github.com/rbrus/agent-redteam-benchmark/blob/main/results/2026-10-12-sixi-oss-v83/README.md).
+[v0.8.3 write-up](https://github.com/radek-sixi/agent-redteam-benchmark/blob/main/results/2026-10-12-sixi-oss-v83/README.md).
 
 ## Install
 
 ```console
-go install github.com/rbrus/sixi-scanner/cmd/sixi-scanner@latest
+go install github.com/radek-sixi/sixi-scanner/cmd/sixi-scanner@latest
 ```
 
 Or build from a checkout:
 
 ```console
-git clone https://github.com/rbrus/sixi-scanner
+git clone https://github.com/radek-sixi/sixi-scanner
 cd sixi-scanner && make build && ./sixi-scanner
 ```
 
@@ -211,7 +211,7 @@ unless `--format` says otherwise.
 
 ## In CI
 
-On GitHub, the [`rbrus/scan-action`](https://github.com/rbrus/scan-action) Action does all of this in one step. Anywhere else:
+On GitHub, the [`radek-sixi/scan-action`](https://github.com/radek-sixi/scan-action) Action does all of this in one step. Anywhere else:
 
 ```yaml
 - name: Red-team the agent

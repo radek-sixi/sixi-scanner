@@ -14,7 +14,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // Def is the part of a technique definition the judge needs. It exists so that

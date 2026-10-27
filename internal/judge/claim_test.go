@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // The claim check has one job with two failure modes, and both are quiet. Too eager and it reports

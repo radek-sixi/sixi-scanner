@@ -25,8 +25,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/rbrus/sixi-scanner/internal/tech"
-	"github.com/rbrus/sixi-scanner/internal/tech/baseline"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/tech/baseline"
 )
 
 // schemaVersion is bumped when the JSON shape changes incompatibly. It is the

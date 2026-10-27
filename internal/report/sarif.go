@@ -7,13 +7,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // sarifVersion is the only version this writer emits.
 const sarifVersion = "2.1.0"
 const sarifSchema = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
-const sarifToolURI = "https://github.com/rbrus/sixi-scanner"
+const sarifToolURI = "https://github.com/radek-sixi/sixi-scanner"
 
 type sarifLog struct {
 	Schema  string     `json:"$schema"`

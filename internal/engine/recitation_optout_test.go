@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/rbrus/sixi-scanner/internal/judge"
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/judge"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // The shared recitation test exists because a technique's markers only know the leak their own

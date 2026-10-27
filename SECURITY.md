@@ -9,7 +9,7 @@ branch.
 
 **Preferred: GitHub's private advisory form.** On this repository, go to
 **Security → Report a vulnerability**
-(<https://github.com/rbrus/sixi-scanner/security/advisories/new>). It opens a
+(<https://github.com/radek-sixi/sixi-scanner/security/advisories/new>). It opens a
 private channel between you and the maintainer.
 
 Please include the technique ID or code path, what an attacker gains, and a

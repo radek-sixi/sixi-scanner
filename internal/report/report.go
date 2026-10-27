@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // SchemaVersion is bumped when the shape of the JSON changes incompatibly.

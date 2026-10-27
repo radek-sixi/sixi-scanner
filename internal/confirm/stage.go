@@ -3,7 +3,7 @@ package confirm
 import (
 	"context"
 
-	"github.com/rbrus/sixi-scanner/internal/engine"
+	"github.com/radek-sixi/sixi-scanner/internal/engine"
 )
 
 // Stage adapts a Client to the engine's Confirmer.

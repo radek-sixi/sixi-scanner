@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rbrus/sixi-scanner/internal/judge"
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/judge"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // Every technique that ships must load, because a registry that panics on

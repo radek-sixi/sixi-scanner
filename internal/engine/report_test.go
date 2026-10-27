@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rbrus/sixi-scanner/internal/report"
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/report"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // A run reports the settings it used so a result can be reproduced or argued with. The tag list is

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rbrus/sixi-scanner/internal/report"
+	"github.com/radek-sixi/sixi-scanner/internal/report"
 )
 
 // writeReport renders the scan in the chosen format. For text, findings are

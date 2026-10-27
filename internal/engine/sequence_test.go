@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/rbrus/sixi-scanner/internal/target"
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/target"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // A multi-turn attack is a property of the conversation, so these tests are about the conversation:

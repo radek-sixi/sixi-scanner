@@ -17,7 +17,7 @@
 package baseline
 
 import (
-	"github.com/rbrus/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
 )
 
 // Registry returns the shipped technique set.

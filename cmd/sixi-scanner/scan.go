@@ -13,13 +13,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rbrus/sixi-scanner/internal/confirm"
-	"github.com/rbrus/sixi-scanner/internal/engine"
-	"github.com/rbrus/sixi-scanner/internal/judge"
-	"github.com/rbrus/sixi-scanner/internal/report"
-	"github.com/rbrus/sixi-scanner/internal/target"
-	"github.com/rbrus/sixi-scanner/internal/tech"
-	"github.com/rbrus/sixi-scanner/internal/tech/baseline"
+	"github.com/radek-sixi/sixi-scanner/internal/confirm"
+	"github.com/radek-sixi/sixi-scanner/internal/engine"
+	"github.com/radek-sixi/sixi-scanner/internal/judge"
+	"github.com/radek-sixi/sixi-scanner/internal/report"
+	"github.com/radek-sixi/sixi-scanner/internal/target"
+	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radek-sixi/sixi-scanner/internal/tech/baseline"
 )
 
 func cmdScan(args []string, stdout, stderr io.Writer) result {

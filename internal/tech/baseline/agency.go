@@ -1,6 +1,6 @@
 package baseline
 
-import "github.com/rbrus/sixi-scanner/internal/tech"
+import "github.com/radek-sixi/sixi-scanner/internal/tech"
 
 func addAgency(r *tech.Registry) {
 	add(r, tech.Definition{

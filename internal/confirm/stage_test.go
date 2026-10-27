@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rbrus/sixi-scanner/internal/engine"
+	"github.com/radek-sixi/sixi-scanner/internal/engine"
 )
 
 // The stage is the last word on every candidate break, so its mapping from "a model answered" to

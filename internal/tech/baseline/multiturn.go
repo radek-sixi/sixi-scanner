@@ -1,6 +1,6 @@
 package baseline
 
-import "github.com/rbrus/sixi-scanner/internal/tech"
+import "github.com/radek-sixi/sixi-scanner/internal/tech"
 
 // The multi-turn classes. Every one of them is a property of a *conversation* rather than of a
 // message: a cap that only exists per request, an instruction that waits, a payload that asks to be
