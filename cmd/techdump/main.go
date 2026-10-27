@@ -50,13 +50,13 @@ type record struct {
 	// Sequence carries the multi-turn payloads. It is exported for the same reason Variants is:
 	// without it, comparing two versions would show the new techniques as having lost their
 	// payloads rather than as having changed shape.
-	Sequence   [][]string `json:"sequence,omitempty"`
+	Sequence     [][]string `json:"sequence,omitempty"`
 	Markers      []string   `json:"markers"`
 	RegexMarkers []string   `json:"regex_markers,omitempty"`
 	Negations    []string   `json:"negations,omitempty"`
-	MinMarkers int        `json:"min_markers"`
-	Confidence float64    `json:"confidence"`
-	Tags       []string   `json:"tags,omitempty"`
+	MinMarkers   int        `json:"min_markers"`
+	Confidence   float64    `json:"confidence"`
+	Tags         []string   `json:"tags,omitempty"`
 }
 
 // dump is the whole export.
