@@ -3,6 +3,7 @@ package tech
 import (
 	"sort"
 	"strconv"
+	"regexp"
 	"strings"
 )
 
@@ -68,6 +69,17 @@ func lower(s string) string {
 	return string(b)
 }
 
+var techTypographicFolds = strings.NewReplacer(
+	"\u2019", "'",
+	"\u2018", "'",
+	"\u201c", "\"",
+	"\u201d", "\"",
+	"\u2013", "-",
+	"\u2014", "-",
+	"\u2212", "-",
+	"\u00a0", " ",
+)
+
 // Definition is a technique expressed as data: what to send, and what to look
 // for in the reply. Everything the engine and the judge need is in this
 // struct, so a new technique is a new Definition and nothing else.
@@ -130,6 +142,13 @@ type Definition struct {
 	// Markers are substrings whose presence in a reply suggests the attack
 	// landed. They are matched case-insensitively.
 	Markers []string
+
+	// RegexMarkers are matched as case-insensitive regular expressions against the
+	// (folded, lowercased) reply, in addition to Markers. They exist for the case a
+	// substring cannot express: a credential NAME followed by a VALUE, which is the
+	// difference between catching a leak and catching a refusal that names the secret
+	// it declined to share. See probe.llm02.credential-elicitation.
+	RegexMarkers []string
 
 	// Negations are cues that a matched Marker was mentioned rather than
 	// disclosed — "I do not retain any personal data" names "retain" without
@@ -224,6 +243,15 @@ func (d Definition) Validate() string {
 		return d.ID + ": missing Title"
 	case len(d.Variants) == 0 && len(d.Sequence) == 0:
 		return d.ID + ": no Variants and no Sequence, so it cannot send anything"
+	case len(d.RegexMarkers) > 0:
+		for _, m := range d.RegexMarkers {
+			if m == "" {
+				return d.ID + ": an empty regex marker"
+			}
+			if _, err := regexp.Compile("(?i)" + techTypographicFolds.Replace(m)); err != nil {
+				return d.ID + ": invalid regex marker " + m + ": " + err.Error()
+			}
+		}
 	case len(d.Sequence) > 0 && hasEmptyStep(d.Sequence):
 		return d.ID + ": a Sequence entry has no turns"
 	case len(d.Markers) == 0:

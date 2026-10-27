@@ -51,8 +51,9 @@ type record struct {
 	// without it, comparing two versions would show the new techniques as having lost their
 	// payloads rather than as having changed shape.
 	Sequence   [][]string `json:"sequence,omitempty"`
-	Markers    []string   `json:"markers"`
-	Negations  []string   `json:"negations,omitempty"`
+	Markers      []string   `json:"markers"`
+	RegexMarkers []string   `json:"regex_markers,omitempty"`
+	Negations    []string   `json:"negations,omitempty"`
 	MinMarkers int        `json:"min_markers"`
 	Confidence float64    `json:"confidence"`
 	Tags       []string   `json:"tags,omitempty"`
@@ -136,12 +137,13 @@ func collect(reg *tech.Registry) []record {
 		out = append(out, record{
 			ID: d.ID, Title: d.Title, Category: d.Category,
 			Severity: string(d.Severity), Description: d.Description,
-			Remediation: d.Remediation,
-			Variants:    append([]string(nil), d.Variants...),
-			Sequence:    append([][]string(nil), d.Sequence...),
-			Markers:     append([]string(nil), d.Markers...),
-			Negations:   append([]string(nil), d.Negations...),
-			MinMarkers:  d.Minimum(), Confidence: d.Confidence(),
+			Remediation:  d.Remediation,
+			Variants:     append([]string(nil), d.Variants...),
+			Sequence:     append([][]string(nil), d.Sequence...),
+			Markers:      append([]string(nil), d.Markers...),
+			RegexMarkers: append([]string(nil), d.RegexMarkers...),
+			Negations:    append([]string(nil), d.Negations...),
+			MinMarkers:   d.Minimum(), Confidence: d.Confidence(),
 			Tags: append([]string(nil), d.Tags...),
 		})
 	}
