@@ -211,7 +211,7 @@ unless `--format` says otherwise.
 
 ## In CI
 
-On GitHub, the [`radek-sixi/scan-action`](https://github.com/radek-sixi/scan-action) Action does all of this in one step. Anywhere else:
+Run `sixi-scanner` directly in your pipeline and write SARIF 2.1.0 for code scanning:
 
 ```yaml
 - name: Red-team the agent
