@@ -8,6 +8,7 @@ package report
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -62,6 +63,12 @@ type Finding struct {
 	// Fingerprint is a stable hash over the technique and the evidence, used
 	// to tell one finding from a re-run of the same one.
 	Fingerprint string `json:"fingerprint"`
+
+	// DrawnBy lists the techniques whose payloads drew this finding, when it is
+	// filed under a shared test rather than under the technique that was running
+	// — today, the rule-recitation test. It is empty for a technique's own
+	// finding, where technique_id already says what was sent.
+	DrawnBy []string `json:"drawn_by,omitempty"`
 }
 
 // NewFinding assembles a finding and computes its fingerprint.
@@ -82,18 +89,26 @@ func NewFinding(def tech.Definition, ev Evidence, confidence float64, round int,
 	return f
 }
 
+// fingerprintPrefix is how much of the reply a fingerprint covers.
+const fingerprintPrefix = 64
+
 // Fingerprint identifies a finding independently of when it was seen, so a
 // re-test can be diffed against the original. It covers the technique and the
-// first 64 characters of the reply: long enough to tell two different leaks
-// apart, short enough that a truncated answer does not change it every run.
+// first 64 bytes of the reply: long enough to tell two different leaks apart,
+// short enough that the way an answer happens to end does not change it.
+//
+// It used to hash the whole reply and then the prefix again, so the prefix
+// added nothing and any difference in a reply's last sentence — which is where
+// a model varies from run to run — made the same finding a new one.
 func Fingerprint(f Finding) string {
+	reply := f.Evidence.Response
+	if len(reply) > fingerprintPrefix {
+		reply = reply[:fingerprintPrefix]
+	}
 	h := sha256.New()
 	h.Write([]byte(f.TechniqueID))
 	h.Write([]byte{0})
-	h.Write([]byte(f.Evidence.Response))
-	if len(f.Evidence.Response) > 64 {
-		h.Write([]byte(f.Evidence.Response[:64]))
-	}
+	h.Write([]byte(reply))
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
@@ -108,7 +123,10 @@ type Attempt struct {
 	// Unbacked is true when the reply claimed a completed action and the connector reported no
 	// tool calls, so the claim could be neither confirmed nor called a lie. It is recorded rather
 	// than discarded: a finding that cannot be adjudicated should say so, not disappear.
-	Unbacked   bool          `json:"unbacked_claim,omitempty"`
+	Unbacked bool `json:"unbacked_claim,omitempty"`
+	// Recited is true when this attempt's break is a rule recitation rather than the technique's
+	// own evidence. It is filed under the recitation definition, and the technique carries on.
+	Recited    bool          `json:"recited,omitempty"`
 	Round      int           `json:"round"`
 	Attempt    int           `json:"attempt"`
 	Prompt     string        `json:"prompt"`
@@ -119,6 +137,54 @@ type Attempt struct {
 	Confidence float64       `json:"confidence,omitempty"`
 	Reason     string        `json:"reason,omitempty"`
 	Error      string        `json:"error,omitempty"`
+}
+
+// attemptJSON is Attempt as it is written out. Latency is a time.Duration, which encodes as a
+// count of nanoseconds, under a key that says milliseconds; the wire form states the unit it is
+// named for.
+type attemptJSON struct {
+	TechniqueID string  `json:"technique_id"`
+	Confirmed   bool    `json:"confirmed,omitempty"`
+	Rejected    bool    `json:"rejected,omitempty"`
+	Unbacked    bool    `json:"unbacked_claim,omitempty"`
+	Recited     bool    `json:"recited,omitempty"`
+	Round       int     `json:"round"`
+	Attempt     int     `json:"attempt"`
+	Prompt      string  `json:"prompt"`
+	Response    string  `json:"response,omitempty"`
+	Status      int     `json:"status,omitempty"`
+	LatencyMS   int64   `json:"latency_ms"`
+	Broke       bool    `json:"broke"`
+	Confidence  float64 `json:"confidence,omitempty"`
+	Reason      string  `json:"reason,omitempty"`
+	Error       string  `json:"error,omitempty"`
+}
+
+// MarshalJSON writes the attempt with its latency in milliseconds.
+func (a Attempt) MarshalJSON() ([]byte, error) {
+	return json.Marshal(attemptJSON{
+		TechniqueID: a.TechniqueID, Confirmed: a.Confirmed, Rejected: a.Rejected,
+		Unbacked: a.Unbacked, Recited: a.Recited, Round: a.Round, Attempt: a.Attempt,
+		Prompt: a.Prompt, Response: a.Response, Status: a.Status,
+		LatencyMS: a.Latency.Milliseconds(), Broke: a.Broke, Confidence: a.Confidence,
+		Reason: a.Reason, Error: a.Error,
+	})
+}
+
+// UnmarshalJSON reads what MarshalJSON wrote.
+func (a *Attempt) UnmarshalJSON(b []byte) error {
+	var w attemptJSON
+	if err := json.Unmarshal(b, &w); err != nil {
+		return err
+	}
+	*a = Attempt{
+		TechniqueID: w.TechniqueID, Confirmed: w.Confirmed, Rejected: w.Rejected,
+		Unbacked: w.Unbacked, Recited: w.Recited, Round: w.Round, Attempt: w.Attempt,
+		Prompt: w.Prompt, Response: w.Response, Status: w.Status,
+		Latency: time.Duration(w.LatencyMS) * time.Millisecond, Broke: w.Broke,
+		Confidence: w.Confidence, Reason: w.Reason, Error: w.Error,
+	}
+	return nil
 }
 
 // Scan is the whole result of one run.
@@ -160,6 +226,12 @@ type Scan struct {
 	// the one outcome a scanner must not produce, so it declines to run the probe and says so.
 	Unsupported []Unsupported `json:"unsupported,omitempty"`
 
+	// Undecided lists the techniques whose result could not be established from what the target
+	// exposes: the agent claimed a completed action, and there was no tool trace to check the
+	// claim against. They are neither findings nor passes, and a report that leaves them out
+	// presents them as passes.
+	Undecided []Undecided `json:"undecided,omitempty"`
+
 	// Confirm is the optional model-backed stage's effect, nil when none ran.
 	// Absent means no stage ran, which is different from one that ran and
 	// confirmed nothing: without this a reader cannot tell a strict report from
@@ -172,6 +244,12 @@ type Scan struct {
 
 // Unsupported is one technique a scan did not run, together with why.
 type Unsupported struct {
+	TechniqueID string `json:"technique_id"`
+	Reason      string `json:"reason"`
+}
+
+// Undecided is one technique that ran, got an answer, and could not be judged, together with why.
+type Undecided struct {
 	TechniqueID string `json:"technique_id"`
 	Reason      string `json:"reason"`
 }
@@ -231,8 +309,16 @@ func sortFindings(fs []Finding) {
 	}
 	// A stable sort keeps equal severities in discovery order, which is the
 	// order a reader can follow.
+	// A severity this table does not know sorts after every one it does. Read straight from
+	// the map it was zero, the same as critical, and headed the report.
+	rank := func(s tech.Severity) int {
+		if r, ok := severityOrder[s]; ok {
+			return r
+		}
+		return len(severityOrder)
+	}
 	stableSort(fs, func(i, j int) bool {
-		si, sj := severityOrder[fs[i].Severity], severityOrder[fs[j].Severity]
+		si, sj := rank(fs[i].Severity), rank(fs[j].Severity)
 		if si != sj {
 			return si < sj
 		}
@@ -249,9 +335,14 @@ func (s *Scan) StableFingerprintIDs() []string {
 	return out
 }
 
-// ExitCode returns 0 when nothing was found, 1 when something was, and 2 when
-// the scan could not be run at all. It is shaped for CI: a clean scan is a
-// success, a finding is a failure, and a broken run is neither.
+// ExitCode returns 0 when nothing was found, 1 when something was, 2 when the
+// scan assessed nothing at all, and 3 when it assessed only part of what it was
+// asked to. It is shaped for CI: a clean scan is a success, a finding is a
+// failure, and a run that did not cover its technique set is neither.
+//
+// A finding outranks partial coverage: something broke, and that is the more
+// useful thing for the caller to act on. The untested techniques are still
+// listed in every format.
 func (s *Scan) ExitCode() int {
 	if len(s.Findings) > 0 {
 		return 1
@@ -259,7 +350,31 @@ func (s *Scan) ExitCode() int {
 	if s.Unreached() {
 		return 2
 	}
+	if s.Partial() {
+		return 3
+	}
 	return 0
+}
+
+// Partial reports whether some selected technique was sent and never answered, while others were
+// assessed. With no finding to report, such a scan is not clean: "nothing broke" is a statement
+// about the techniques that got a reply, and reading it as a statement about the rest is how a
+// rate limiter turns into a pass.
+//
+// A technique declined as unsupported does not make a scan partial. That is a fixed property of the
+// connector rather than something that went wrong during the run — the default connector cannot
+// hold a conversation, so counting it would fail every scan that uses it. It is reported instead.
+func (s *Scan) Partial() bool {
+	return len(s.NoAnswer) > 0 && !s.Unreached()
+}
+
+// Assessed is how many selected techniques got at least one answer from the target.
+func (s *Scan) Assessed() int {
+	n := len(s.Options.TechniqueIDs) - len(s.NoAnswer) - len(s.Unsupported)
+	if n < 0 {
+		return 0
+	}
+	return n
 }
 
 // Unreached reports whether the scan assessed nothing at all. Such a scan did not find a clean

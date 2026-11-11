@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -28,7 +29,7 @@ func cmdScan(args []string, stdout, stderr io.Writer) result {
 	var (
 		url       = fs.String("url", "", "endpoint to scan (required unless --target echo)")
 		connector = fs.String("target", "openai", "transport: openai, json, chat, webform, echo")
-		headerArg = fs.String("header", "", "extra header, repeatable, as \"Name: value\"")
+		headers   = headerFlag{}
 
 		model      = fs.String("model", "", "model field for the openai transport")
 		bodyTpl    = fs.String("body", "", "request body template for the json transport; {{prompt}} and {{json}} are substituted")
@@ -69,6 +70,7 @@ func cmdScan(args []string, stdout, stderr io.Writer) result {
 
 		extraTimeout = fs.Duration("overall-timeout", 0, "abort the whole scan after this long; 0 means no limit")
 	)
+	fs.Var(headers, "header", "extra header as \"Name: value\"; repeat the flag for more than one")
 
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage: sixi-scanner scan --url <endpoint> [flags]
@@ -99,15 +101,24 @@ Examples:
 `)
 	}
 	if err := fs.Parse(args); err != nil {
+		// Asking for help is not a failure. The flag package has already printed the usage.
+		if errors.Is(err, flag.ErrHelp) {
+			return result{code: exitOK}
+		}
 		return result{code: exitUsage, err: err}
 	}
 
-	// Validate before touching the network, so a typo costs nothing.
+	// Validate before touching the network, so a typo costs nothing. The format is checked here
+	// rather than when the report is written: by then the scan has run, and a mistyped --format
+	// threw its result away.
+	if err := checkFormat(*format); err != nil {
+		return result{code: exitUsage, err: err}
+	}
 	cfg := target.Config{
 		URL:      *url,
 		Timeout:  *timeout,
 		Insecure: *insecure,
-		Headers:  parseHeaders(*headerArg),
+		Headers:  headers.orNil(),
 		Extra:    map[string]string{},
 	}
 	if *model != "" {
@@ -179,6 +190,13 @@ Examples:
 		if *confirmModel == "" {
 			return result{code: exitUsage, err: fmt.Errorf("--confirm-url needs --confirm-model")}
 		}
+		// An unrecognised floor ranks as zero, which is "none": a mistyped "hgih" would keep every
+		// candidate the model called a violation at any severity. Refused here, before anything
+		// is sent, rather than discovered in a report.
+		if !confirm.ValidFloor(*confirmFloor) {
+			return result{code: exitUsage, err: fmt.Errorf("--confirm-min-severity %q is not a severity; use one of %s",
+				*confirmFloor, confirm.FloorNames())}
+		}
 		tc, err := loadContext(*contextPath)
 		if err != nil {
 			return result{code: exitUsage, err: err}
@@ -196,7 +214,9 @@ Examples:
 		return result{code: exitUsage, err: err}
 	}
 	scan.Tool = toolName
-	scan.Version = version
+	// The same version the version command prints. The bare variable is "dev" for anyone who
+	// installed with `go install`, so their reports could not be tied to a release.
+	scan.Version = resolveVersion()
 	if *insecure {
 		scan.TargetNotes = append(scan.TargetNotes,
 			"TLS verification was disabled (--insecure).")
@@ -220,6 +240,10 @@ Examples:
 	if scan.Unreached() {
 		scan.TargetNotes = append(scan.TargetNotes,
 			"No technique got an answer from the target. Nothing was assessed; this is not a clean result.")
+	} else if scan.Partial() && ctx.Err() == nil {
+		scan.TargetNotes = append(scan.TargetNotes, fmt.Sprintf(
+			"%d of the %d selected techniques got no answer from the target and were not assessed. Coverage is partial.",
+			len(scan.NoAnswer), len(scan.Options.TechniqueIDs)))
 	}
 	scan.Summarise()
 
@@ -235,7 +259,7 @@ Examples:
 	// A cancelled scan exits 3 rather than 0. A CI job that treats "no findings"
 	// as a pass must not read a run that never finished as a pass.
 	if ctx.Err() != nil {
-		return result{code: exitInterrupted, err: fmt.Errorf("scan stopped before completion")}
+		return result{code: exitPartial, err: fmt.Errorf("scan stopped before completion")}
 	}
 	if len(scan.Findings) > 0 {
 		return result{code: exitFindings}
@@ -244,6 +268,14 @@ Examples:
 	// would let a CI job read a down endpoint as a clean agent.
 	if scan.Unreached() {
 		return result{code: exitUsage, err: fmt.Errorf("no technique got an answer from %s; nothing was assessed", scan.Target)}
+	}
+	// Some techniques got an answer and some never did. "Nothing broke" is true of
+	// the first group only, so this is the same outcome as an interrupted scan: it
+	// did not cover what it was asked to cover, and it must not read as a pass.
+	if scan.Partial() {
+		return result{code: exitPartial, err: fmt.Errorf(
+			"%d of %d techniques got no answer from %s; coverage is partial",
+			len(scan.NoAnswer), len(scan.Options.TechniqueIDs), scan.Target)}
 	}
 	return result{code: exitOK}
 }
@@ -317,6 +349,9 @@ func applyMinSeverity(scan *report.Scan, floor tech.Severity) {
 	if floor == "" {
 		return
 	}
+	// Recorded with the other options: a report that lists no low-severity finding reads
+	// differently once it says that none were looked for.
+	scan.Options.MinSeverity = string(floor)
 	kept := scan.Findings[:0]
 	for _, f := range scan.Findings {
 		if f.Severity.AtLeast(floor) {
@@ -326,8 +361,44 @@ func applyMinSeverity(scan *report.Scan, floor tech.Severity) {
 	scan.Findings = kept
 }
 
-// parseHeaders reads repeatable --header values, given as one string with "|"
-// between entries because Go's flag package has no repeatable flag.
+// headerFlag collects --header values across repeats of the flag.
+//
+// It has to accumulate. As a plain string flag the last --header replaced the ones before it, so
+// `--header "Authorization: …" --header "X-Tenant: …"` sent the tenant and dropped the credential,
+// and the scan that followed was an unauthenticated one that nobody had asked for.
+type headerFlag map[string]string
+
+// String implements flag.Value. The flag has no default worth printing.
+func (h headerFlag) String() string { return "" }
+
+// Set implements flag.Value. A blank value is accepted and adds nothing, so a pipeline can pass an
+// optional variable that happens to be empty; anything else has to yield at least one header, or
+// it is a typo that would otherwise only show up as a 401.
+func (h headerFlag) Set(v string) error {
+	if strings.TrimSpace(v) == "" {
+		return nil
+	}
+	parsed := parseHeaders(v)
+	if len(parsed) == 0 {
+		return fmt.Errorf("want \"Name: value\", got %q", v)
+	}
+	for name, value := range parsed {
+		h[name] = value
+	}
+	return nil
+}
+
+// orNil returns the headers, or nil when there are none: an empty map would be handed to the
+// connector as a non-nil header set.
+func (h headerFlag) orNil() map[string]string {
+	if len(h) == 0 {
+		return nil
+	}
+	return h
+}
+
+// parseHeaders reads one --header value. It may hold several headers with "|" between them, which
+// is how more than one was passed before the flag could be repeated; that form still works.
 func parseHeaders(v string) map[string]string {
 	if strings.TrimSpace(v) == "" {
 		return nil
@@ -335,10 +406,10 @@ func parseHeaders(v string) map[string]string {
 	out := map[string]string{}
 	for _, h := range strings.Split(v, "|") {
 		name, value, found := strings.Cut(h, ":")
-		if !found {
+		if name = strings.TrimSpace(name); !found || name == "" {
 			continue
 		}
-		out[strings.TrimSpace(name)] = strings.TrimSpace(value)
+		out[name] = strings.TrimSpace(value)
 	}
 	if len(out) == 0 {
 		return nil
@@ -356,9 +427,18 @@ func progressPrinter(w io.Writer) func(report.Attempt) {
 		case a.Error != "":
 			fmt.Fprintf(w, "  %-44s r%d a%d  no answer: %s\n",
 				a.TechniqueID, a.Round, a.Attempt, firstLine(a.Error))
+		case a.Recited:
+			// Not this technique's break: the reply listed the agent's own rules, which is
+			// filed as a finding of its own, and the technique goes on to its next variant.
+			fmt.Fprintf(w, "  %-44s r%d a%d  recited its rules  confidence %.2f\n",
+				a.TechniqueID, a.Round, a.Attempt, a.Confidence)
 		case a.Broke:
 			fmt.Fprintf(w, "  %-44s r%d a%d  BREAK  confidence %.2f\n",
 				a.TechniqueID, a.Round, a.Attempt, a.Confidence)
+		case a.Unbacked:
+			// Not "held": the agent said it had done something and there was no trace to check.
+			fmt.Fprintf(w, "  %-44s r%d a%d  claimed an action; no tool trace to check it against\n",
+				a.TechniqueID, a.Round, a.Attempt)
 		default:
 			fmt.Fprintf(w, "  %-44s r%d a%d  held\n", a.TechniqueID, a.Round, a.Attempt)
 		}

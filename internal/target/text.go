@@ -3,8 +3,10 @@ package target
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // stripHTML reduces a markup reply to the text a judge can match against,
@@ -28,6 +30,16 @@ func stripHTML(s string) string {
 					}
 				}
 				b.WriteByte(s[i])
+			}
+			i++
+			continue
+		}
+
+		// A '<' opens a tag only when a tag could follow it. In "x < 5 and y > 3" it is a
+		// comparison, and reading it as a tag deleted everything up to the next '>'.
+		if !opensTag(s, i) {
+			if skipUntil == "" {
+				b.WriteByte('<')
 			}
 			i++
 			continue
@@ -70,6 +82,16 @@ func stripHTML(s string) string {
 	return collapse(b.String())
 }
 
+// opensTag reports whether the '<' at i could begin markup: a tag name, a closing tag, a comment or
+// a processing instruction.
+func opensTag(s string, i int) bool {
+	if i+1 >= len(s) {
+		return false
+	}
+	c := s[i+1]
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '/' || c == '!' || c == '?'
+}
+
 // tagAt returns the lowercased tag name in s[start:gt] and whether it is a
 // closing tag.
 func tagAt(s string, start, gt int) (name string, closing bool) {
@@ -97,8 +119,13 @@ func decodeEntity(s string) (string, int) {
 	}
 	if strings.HasPrefix(s, "&#") {
 		end := strings.IndexByte(s, ';')
-		if end > 2 && end < 9 {
-			if n, err := atoi(s[2:end]); err == nil {
+		if end > 2 && end < 10 {
+			digits, base := s[2:end], 10
+			// &#x27; is the same apostrophe as &#39;, and the form most HTML escapers emit.
+			if digits[0] == 'x' || digits[0] == 'X' {
+				digits, base = digits[1:], 16
+			}
+			if n, err := strconv.ParseUint(digits, base, 32); err == nil && n > 0 && n <= unicode.MaxRune {
 				return string(rune(n)), end + 1
 			}
 		}

@@ -15,6 +15,11 @@ const sarifVersion = "2.1.0"
 const sarifSchema = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
 const sarifToolURI = "https://github.com/radek-sixi/sixi-scanner"
 
+// sarifFingerprintKey names the fingerprint and the version of the algorithm behind it. It is v2
+// because v1 covered the whole reply rather than its opening, so the two are not comparable: a
+// consumer matching on v1 must not be handed values computed another way under the same name.
+const sarifFingerprintKey = "sixiScan/v2"
+
 type sarifLog struct {
 	Schema  string     `json:"$schema"`
 	Version string     `json:"version"`
@@ -24,9 +29,8 @@ type sarifLog struct {
 type sarifRun struct {
 	Tool    sarifTool     `json:"tool"`
 	Results []sarifResult `json:"results"`
-	// Invocations carries the exit code so a SARIF consumer can tell a clean
-	// run from a run that produced findings, which SARIF has no other way to
-	// express.
+	// Invocations carries the exit code, whether the run assessed anything, and
+	// the techniques it could not test.
 	Invocations []sarifInvocation `json:"invocations"`
 }
 
@@ -94,6 +98,54 @@ type sarifRegion struct {
 type sarifInvocation struct {
 	ExecutionSuccessful bool `json:"executionSuccessful"`
 	ExitCode            int  `json:"exitCode"`
+	// Notifications carries what the run could not test. SARIF results are findings, so a technique
+	// that was never answered has nowhere else to appear, and a consumer reading only the results
+	// would take its absence for a pass.
+	Notifications []sarifNotification `json:"toolExecutionNotifications,omitempty"`
+}
+
+type sarifNotification struct {
+	Descriptor sarifDescriptorRef `json:"descriptor"`
+	Level      string             `json:"level"`
+	Message    sarifText          `json:"message"`
+}
+
+type sarifDescriptorRef struct {
+	ID string `json:"id"`
+}
+
+// Notification descriptor IDs. They are stable strings a consumer can filter on.
+const (
+	sarifNoAnswer    = "sixi/no-answer"
+	sarifUnsupported = "sixi/unsupported"
+	sarifUndecided   = "sixi/undecided"
+)
+
+// untestedNotifications lists every selected technique the scan did not assess.
+func untestedNotifications(s *Scan) []sarifNotification {
+	var out []sarifNotification
+	for _, id := range s.NoAnswer {
+		out = append(out, sarifNotification{
+			Descriptor: sarifDescriptorRef{ID: sarifNoAnswer},
+			Level:      "warning",
+			Message:    sarifText{Text: "Not tested: " + id + " got no answer from the target."},
+		})
+	}
+	for _, u := range s.Unsupported {
+		out = append(out, sarifNotification{
+			Descriptor: sarifDescriptorRef{ID: sarifUnsupported},
+			Level:      "note",
+			Message:    sarifText{Text: "Not tested: " + u.TechniqueID + " cannot run against this target: " + u.Reason + "."},
+		})
+	}
+	for _, u := range s.Undecided {
+		out = append(out, sarifNotification{
+			Descriptor: sarifDescriptorRef{ID: sarifUndecided},
+			Level:      "warning",
+			Message:    sarifText{Text: "Not decided: " + u.TechniqueID + ": " + u.Reason + "."},
+		})
+	}
+	return out
 }
 
 // severityToSARIFLevel maps a finding severity to a SARIF level. SARIF has
@@ -150,17 +202,23 @@ func WriteSARIF(w io.Writer, s *Scan) error {
 	results := make([]sarifResult, 0, len(s.Findings))
 	for _, f := range s.Findings {
 		snippet := &sarifText{Text: excerpt(f.Evidence.Response, 400)}
+		message := f.Evidence.Reason
+		if len(f.DrawnBy) > 0 {
+			// The rule is the shared test, so the message is the only place a SARIF consumer
+			// can learn which payloads to re-run.
+			message += " (drawn by " + strings.Join(f.DrawnBy, ", ") + ")"
+		}
 		results = append(results, sarifResult{
 			RuleID:  f.TechniqueID,
 			Level:   severityToSARIFLevel(f.Severity),
-			Message: sarifText{Text: f.Evidence.Reason},
+			Message: sarifText{Text: message},
 			Locations: []sarifLocation{{
 				PhysicalLocation: sarifPhysical{
 					ArtifactLocation: sarifArtifact{URI: uri},
 					Region:           &sarifRegion{StartLine: 1, Snippet: snippet},
 				},
 			}},
-			Fingerprints: map[string]string{"sixiScan/v1": f.Fingerprint},
+			Fingerprints: map[string]string{sarifFingerprintKey: f.Fingerprint},
 		})
 	}
 
@@ -176,8 +234,15 @@ func WriteSARIF(w io.Writer, s *Scan) error {
 			}},
 			Results: results,
 			Invocations: []sarifInvocation{{
-				ExecutionSuccessful: s.ExitCode() == 0,
+				// executionSuccessful says whether the tool ran, not whether it found
+				// anything: SARIF 2.1.0 §3.20.14 notes that a non-zero exit code can mean
+				// "results were found", and a consumer that sees false here treats the
+				// upload as a failed analysis. A scan with findings ran. So did one with
+				// partial coverage, which says so in the notifications. Only a scan that
+				// assessed nothing failed to run.
+				ExecutionSuccessful: !s.Unreached(),
 				ExitCode:            s.ExitCode(),
+				Notifications:       untestedNotifications(s),
 			}},
 		}},
 	}

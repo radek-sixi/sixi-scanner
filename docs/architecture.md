@@ -10,7 +10,7 @@ cmd/sixi-scanner          flags, exit codes, report rendering
 cmd/techdump              exports the technique set as data, and diffs it
    │
    ├── tech      a technique as data: Definition, Registry, Technique
-   │     └── tech/baseline   the 21 shipped techniques
+   │     └── tech/baseline   the 27 shipped techniques
    │
    ├── target    where prompts go: Target, and five transports
    │
@@ -22,9 +22,10 @@ cmd/techdump              exports the technique set as data, and diffs it
 ```
 
 Dependencies run one way only. `engine` imports `judge`, `report`, `target` and
-`tech`; nothing imports `engine`. `judge` imports only `tech`, and only for one
-conversion function. That is what lets the judge be tested against
-hand-written definitions with no engine in the picture.
+`tech`; nothing imports `engine`. `judge` imports only `tech`, and only for the
+definition type: one conversion function, and the definition a rule recitation
+is reported under. That is what lets the judge be tested against hand-written
+definitions with no engine in the picture.
 
 ## The seam that matters
 
@@ -46,7 +47,7 @@ type Technique interface {
 ```
 
 A technique is data behind an interface. `tech.Data` adapts a `Definition` to
-it, which is how all 21 shipped techniques work — but a technique that needs
+it, which is how all 27 shipped techniques work — but a technique that needs
 request-dependent payloads can implement the interface directly and get the same
 orchestration for free.
 

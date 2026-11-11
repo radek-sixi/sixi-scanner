@@ -31,15 +31,26 @@ func WriteMarkdown(w io.Writer, s *Scan) error {
 		b.WriteString("\n")
 	}
 
+	untested := len(s.NoAnswer) + len(s.Unsupported)
+
 	b.WriteString("## Summary\n\n")
 	if len(s.Findings) == 0 {
-		fmt.Fprintf(&b,
-			"No findings. %d attempts across %d techniques found no confirmed break.\n\n"+
-				"A clean report is evidence about the techniques that were run, not a "+
-				"statement that the agent is secure. It does not cover techniques this "+
-				"tool does not implement, and it does not cover attacks that need a "+
-				"judgement no string match can make.\n\n",
-			s.Attempts, len(s.Options.TechniqueIDs))
+		// The count is of techniques that got an answer, not of techniques selected. Saying
+		// "across 24 techniques" when 9 of them were never answered is the sentence a reader
+		// forwards.
+		if untested == 0 {
+			fmt.Fprintf(&b, "No findings. %d attempts across %d techniques found no confirmed break.\n\n",
+				s.Attempts, len(s.Options.TechniqueIDs))
+		} else {
+			fmt.Fprintf(&b, "No findings. %d attempts across %d of the %d selected techniques found no "+
+				"confirmed break. **%d were not tested** and are listed below; this result says "+
+				"nothing about them.\n\n",
+				s.Attempts, s.Assessed(), len(s.Options.TechniqueIDs), untested)
+		}
+		b.WriteString("A clean report is evidence about the techniques that were run, not a " +
+			"statement that the agent is secure. It does not cover techniques this " +
+			"tool does not implement, and it does not cover attacks that need a " +
+			"judgement no string match can make.\n\n")
 	} else {
 		counts := s.CountBySeverity()
 		fmt.Fprintf(&b, "| Severity | Findings |\n|---|---|\n")
@@ -54,6 +65,38 @@ func WriteMarkdown(w io.Writer, s *Scan) error {
 		b.WriteString("\n")
 	}
 
+	// What was not tested comes before the findings, not after them. It qualifies the summary a
+	// reader has just read, and a section at the bottom of a long report is one nobody reaches.
+	if untested > 0 {
+		b.WriteString("## Not tested\n\n")
+		fmt.Fprintf(&b, "%d of the %d selected techniques were not assessed. A technique listed here "+
+			"did not pass; it was not run.\n\n", untested, len(s.Options.TechniqueIDs))
+		if len(s.NoAnswer) > 0 {
+			b.WriteString("**No answer from the target**\n\n")
+			for _, id := range s.NoAnswer {
+				fmt.Fprintf(&b, "- `%s`\n", id)
+			}
+			b.WriteString("\n")
+		}
+		if len(s.Unsupported) > 0 {
+			b.WriteString("**Not runnable against this target**\n\n")
+			for _, u := range s.Unsupported {
+				fmt.Fprintf(&b, "- `%s` — %s\n", u.TechniqueID, u.Reason)
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	if len(s.Undecided) > 0 {
+		b.WriteString("## Could not be decided\n\n")
+		b.WriteString("These techniques got an answer that this scan had no way to judge. They are " +
+			"not findings, and they did not pass.\n\n")
+		for _, u := range s.Undecided {
+			fmt.Fprintf(&b, "- `%s` — %s\n", u.TechniqueID, u.Reason)
+		}
+		b.WriteString("\n")
+	}
+
 	for i, f := range s.Findings {
 		fmt.Fprintf(&b, "## %d. %s\n\n", i+1, f.Title)
 		fmt.Fprintf(&b, "| | |\n|---|---|\n")
@@ -64,6 +107,9 @@ func WriteMarkdown(w io.Writer, s *Scan) error {
 		fmt.Fprintf(&b, "| **Fingerprint** | `%s` |\n", f.Fingerprint)
 		if len(f.Rounds) > 1 {
 			fmt.Fprintf(&b, "| **Reproduced in** | %d rounds |\n", len(f.Rounds))
+		}
+		if len(f.DrawnBy) > 0 {
+			fmt.Fprintf(&b, "| **Drawn by** | %s |\n", codeList(f.DrawnBy))
 		}
 		b.WriteString("\n")
 

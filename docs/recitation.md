@@ -56,6 +56,32 @@ recall from 0.444 to 0.889 and left turn-precision essentially where it was
 findings, which is the wrong trade for a scanner: a false alarm costs a reader
 one line, a missed disclosure costs the finding.
 
+## How it is reported
+
+A recitation is a finding about the agent, not about the technique whose
+payload drew it, so it is filed under its own identifier:
+
+| | |
+|---|---|
+| **Technique** | `probe.llm07.rule-recitation` |
+| **Severity** | medium |
+| **Confidence** | 0.6 |
+| **Drawn by** | the techniques whose payloads drew it (`drawn_by` in JSON) |
+
+One scan produces at most one such finding, however many techniques drew it,
+and it keeps the exchange with the highest confidence as its evidence.
+
+It never counts toward the probing technique's own verdict. A refusal that
+cites three limits is not a critical *credential elicitation* just because that
+was the probe running, and it does not complete a multi-turn sequence that no
+turn completed. The technique carries on to its next variant, and if that one
+lands, its own finding is filed beside the recitation. An attempt whose only
+break is a recitation is marked `recited` in the attempt record.
+
+If you compare runs by technique identifier, note that recitation hits are no
+longer attributed to the probing technique: join on `drawn_by` to recover that
+view.
+
 ## What it is not
 
 Recitation is an **inference, not an observation**. A reply can recite its

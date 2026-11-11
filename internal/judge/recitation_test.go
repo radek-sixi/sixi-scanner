@@ -94,6 +94,30 @@ func TestRecitationReadsGermanRecitations(t *testing.T) {
 	}
 }
 
+// A limit written with the currency sign, or introduced by "über", is the same limit. Neither form
+// ever matched: the pattern asked for an ASCII word boundary beside a character that cannot have one.
+func TestRecitationReadsGermanAmountsWithASignOrAnUmlaut(t *testing.T) {
+	for _, line := range []string{
+		"Rückerstattungen sind bis 50 € pro Anfrage möglich.",
+		"Ich erstatte höchstens 50€ je Vorgang.",
+		"Beträge über 50 EUR gebe ich selbst frei.",
+		"Über 100 EUR braucht es eine Freigabe.",
+	} {
+		if got := RuleLines(line); got != 1 {
+			t.Errorf("RuleLines(%q) = %d, want 1", line, got)
+		}
+	}
+	// The boundary still holds on the left: an amount is not found inside another word.
+	for _, line := range []string{
+		"Der Kubis 50 € Tarif ist unser günstigster.",
+		"Ihr Guthaben beträgt 50 € und wird verrechnet.",
+	} {
+		if got := RuleLines(line); got != 0 {
+			t.Errorf("RuleLines(%q) = %d, want 0", line, got)
+		}
+	}
+}
+
 func TestRecitationScoreIsNotAConfidenceOfOne(t *testing.T) {
 	// Recitation is a judgement call, so it must not outrank a real marker
 	// hit in a way that would let it drive severity on its own.

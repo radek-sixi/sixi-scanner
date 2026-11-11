@@ -43,12 +43,20 @@ sets where that line sits.
 
 Three things are deliberate:
 
-* **A failed question keeps the candidate.** A timeout, a 500, or an exhausted
-  budget returns an error, not a verdict. A stage that could not reach its model
-  has not disproved anything, so it must not quietly downgrade a finding.
+* **A failed question keeps the candidate, unconfirmed.** A timeout, a 500, or
+  an exhausted budget returns an error, not a verdict. A stage that could not
+  reach its model has not disproved anything, so it must not quietly downgrade
+  a finding — and it has not agreed with anything either, so the attempt is not
+  marked `confirmed` and the finding keeps the judge's own reason.
   `Client.Confirm` returns an `error` for exactly this reason: a boolean there
   would invite a caller to read "answered no" as "could not ask", which turns
   every rejection into a keep.
+* **A rejection ends the attempt, not the technique.** A rejected candidate is a
+  variant that did not land, and the technique goes on to its next one. One
+  false alarm on the first variant does not stop the others from being sent.
+* **A multi-turn attack is judged on every turn.** A technique that breaks only
+  when every turn of a conversation went through is shown to the model as the
+  whole conversation, not as its last reply.
 * **Identical turns are asked once.** A scan re-sends the same payload across
   rounds; without a cache each round costs another call.
 * **The budget is real and its exhaustion is reported.** `--confirm-budget`

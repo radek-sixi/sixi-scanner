@@ -67,8 +67,12 @@ sentence it appeared in, and a match inside a denial is discounted rather than
 counted. See [docs/judge.md](docs/judge.md).
 
 **It reports what it could not test.** A technique that got no answer is listed
-as untested rather than counted as a pass. A scan interrupted partway says its
-coverage is partial and exits 3.
+as untested rather than counted as a pass — in every report format, not only at
+the terminal. A scan that was interrupted partway, or where some techniques
+never got an answer, says its coverage is partial and exits 3. A technique that
+got an answer the scan had no way to judge — the agent said it had sent
+something, and the connector reports no tool calls to check that against — is
+listed under `undecided`, not passed.
 
 **It can ask, if you have somewhere to ask.** A marker match is evidence, not a
 verdict: *"I can't share API keys"* contains every credential marker's substring
@@ -165,9 +169,11 @@ $ sixi-scanner scan --url https://your-agent.example/v1/chat/completions \
 | `echo` | Nothing — an in-process target for demos and CI | nothing |
 
 The `json` connector is the one that makes this usable against a system nobody
-else has seen. `--body` takes a template with `{{prompt}}` (raw) or `{{json}}`
-(JSON-escaped, which is what you want); `--reply-path` is a dotted path into the
-response, with numeric segments for arrays:
+else has seen. `--body` takes a template with `{{json}}` (the prompt as a whole
+JSON string, quotes included, which is what you want) or `{{prompt}}` (the
+prompt escaped for a string you have already quoted, as in `"q":"{{prompt}}"`);
+`--reply-path` is a dotted path into the response, with numeric segments for
+arrays:
 
 ```console
 --body '{"q":{{json}}}' --reply-path data.0.answer.text
@@ -231,9 +237,12 @@ Exit codes are the interface:
 | `0` | Ran, found nothing |
 | `1` | Ran, found something |
 | `2` | Could not run — bad flags, unreachable target, bad output path |
-| `3` | Interrupted before covering what it was asked to cover |
+| `3` | Did not cover what it was asked to cover — interrupted, or some techniques got no answer |
 
-`3` is distinct from `0` on purpose: a cancelled scan must not read as a pass.
+`3` is distinct from `0` on purpose: a cancelled scan must not read as a pass,
+and neither must one where the target stopped answering partway. An endpoint
+that answers with an error status and nothing readable — an expired token, a
+mistyped path, a rate limiter — counts as no answer.
 
 Upload with [`github/codeql-action/upload-sarif`](https://github.com/github/codeql-action)
 or the SARIF uploader of your choice.

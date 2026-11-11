@@ -45,18 +45,39 @@ type Verdict struct {
 // Broken reports whether the verdict should keep a candidate alive, at the
 // client's severity floor. Severity matters: a model that says "violation, low"
 // has described an inconvenience, not a breach, and filing those is how a
-// report fills with noise. A zero floor means medium.
+// report fills with noise. With no floor chosen the bar is medium.
 func (c *Client) Broken(v Verdict) bool {
 	return v.Violation && severityRank(v.Severity) >= c.floorOrDefault()
 }
 
-// floorOrDefault is the bar a client enforces when none was set.
+// floorOrDefault is the bar a client enforces: the one it was given, or medium when it was given
+// none. "none" is itself a bar — rank zero, keep every violation — so whether one was given is
+// recorded separately rather than read off the number.
 func (c *Client) floorOrDefault() int {
-	if c == nil || c.floor == 0 {
+	if c == nil || (c.floor == 0 && !c.floorSet) {
 		return severityMedium
 	}
 	return c.floor
 }
+
+// floorNames are the values a severity floor may take, lowest first.
+var floorNames = []string{"none", "low", "medium", "high", "critical"}
+
+// ValidFloor reports whether name is a severity floor this package understands. An unrecognised
+// name ranks as zero, which is the floor "none": a mistyped "hgih" would otherwise keep every
+// candidate the model called a violation at any severity, which is the opposite of what was asked.
+func ValidFloor(name string) bool {
+	name = strings.ToLower(strings.TrimSpace(name))
+	for _, n := range floorNames {
+		if name == n {
+			return true
+		}
+	}
+	return false
+}
+
+// FloorNames lists the accepted floors, for an error message.
+func FloorNames() string { return strings.Join(floorNames, ", ") }
 
 // severityMedium is the bar a model answer must clear. Below it a "violation" is an
 // inconvenience, and filing those is how a report fills with noise.
@@ -90,8 +111,11 @@ type Client struct {
 	http    *http.Client
 	budget  int
 	spent   int
-	floor   int // lowest severity that keeps a candidate; 0 means medium
-	cache   map[string]Verdict
+	floor   int // lowest severity that keeps a candidate
+	// floorSet records that a floor was chosen, so that "none" (rank 0) is a choice and not
+	// the absence of one.
+	floorSet bool
+	cache    map[string]Verdict
 
 	// Asked, Kept and Rejected are counters for the run report: how many candidates reached the
 	// model, how many it kept, and how many it threw away. A stage whose effect cannot be counted

@@ -444,8 +444,18 @@ var standaloneParticles = []string{"não", "nao", "non", "nicht", "ne'quir", "se
 // what it negates, where a plain substring list cannot help.
 func containsElidedNegation(s string) bool {
 	for _, p := range standaloneParticles {
-		if indexWord(s, p, 0) >= 0 {
-			return true
+		for from := 0; ; {
+			i := indexWord(s, p, from)
+			if i < 0 {
+				break
+			}
+			// A particle that runs into a hyphen is an English prefix, not a word. "Non-refundable"
+			// and "non-public" describe a category and deny nothing, and reading them as Italian
+			// discounted every marker in the sentence.
+			if after := i + len(p); after >= len(s) || s[after] != '-' {
+				return true
+			}
+			from = i + 1
 		}
 	}
 
@@ -455,11 +465,16 @@ func containsElidedNegation(s string) bool {
 			if i < 0 {
 				break
 			}
+			// The companion is looked for in the next elisionGap bytes, or in what is left of the
+			// sentence when that is shorter. Requiring the full gap to exist skipped every negation
+			// that closed its sentence — "ne me regarde pas." — which is where French puts them.
 			after := i + len(particle)
-			if after < len(s) && after+elisionGap <= len(s) {
-				if containsAny(s[after:after+elisionGap], elidedCompanions) {
-					return true
-				}
+			hi := after + elisionGap
+			if hi > len(s) {
+				hi = len(s)
+			}
+			if hasCue(s[after:hi], elidedCompanions) {
+				return true
 			}
 			from = i + 1
 		}

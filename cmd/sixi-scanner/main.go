@@ -66,7 +66,8 @@ func main() {
 //	0  the scan ran and found nothing
 //	1  the scan ran and found something
 //	2  the command could not run — bad flags, unreachable target, bad path
-//	3  the scan was interrupted before it covered what it was asked to cover
+//	3  the scan did not cover what it was asked to cover — it was interrupted,
+//	   or some techniques never got an answer
 //
 // A command returns its exit code and an error separately. Bundling the two
 // into one value invites the failure this file originally had: a command that
@@ -102,10 +103,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 // Exit codes. Named so that a reader does not have to remember which is which.
 const (
-	exitOK          = 0 // ran, found nothing
-	exitFindings    = 1 // ran, found something
-	exitUsage       = 2 // could not run
-	exitInterrupted = 3 // stopped before covering what it was asked to cover
+	exitOK       = 0 // ran, found nothing
+	exitFindings = 1 // ran, found something
+	exitUsage    = 2 // could not run
+	exitPartial  = 3 // did not cover what it was asked to: interrupted, or some techniques unanswered
 )
 
 // result is a command's exit code and its error, kept separate.
@@ -124,11 +125,18 @@ func succeeded(err error) result {
 }
 
 // finish prints an error, if there is one, and returns the exit code to use.
-// An error always means the command failed, whatever code it asked for — a
-// scan that found something *and* could not write its report has not succeeded.
+// An error always means the command failed — a scan that found something *and*
+// could not write its report has not succeeded — so a code that claims a
+// completed run is overridden. A code that already names a failure is kept:
+// which failure it was is the reason there is more than one. Flattening every
+// error to 2 is what made exit 3 unreachable, and an interrupted scan
+// indistinguishable from a bad flag.
 func finish(r result, stderr io.Writer) int {
-	if r.err != nil {
-		fmt.Fprintf(stderr, "%s: %v\n", toolName, r.err)
+	if r.err == nil {
+		return r.code
+	}
+	fmt.Fprintf(stderr, "%s: %v\n", toolName, r.err)
+	if r.code == exitOK || r.code == exitFindings {
 		return exitUsage
 	}
 	return r.code

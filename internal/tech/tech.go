@@ -235,28 +235,67 @@ func (d Definition) Minimum() int {
 // markers cannot detect anything, so both are hard errors rather than
 // defaults — a technique that silently never fires is worse than one that
 // refuses to load.
+//
+// The checks run one after another, each on its own. They used to be the cases of one switch, where
+// the first case that matched ended it — so a definition with a well-formed regex marker was never
+// asked about its sequence or its severity, and one typo'd severity away from sorting above every
+// critical finding in a report.
 func (d Definition) Validate() string {
-	switch {
-	case d.ID == "":
+	if d.ID == "" {
 		return "missing ID"
-	case d.Title == "":
+	}
+	if d.Title == "" {
 		return d.ID + ": missing Title"
-	case len(d.Variants) == 0 && len(d.Sequence) == 0:
+	}
+
+	// What is sent.
+	if len(d.Variants) == 0 && len(d.Sequence) == 0 {
 		return d.ID + ": no Variants and no Sequence, so it cannot send anything"
-	case len(d.RegexMarkers) > 0:
-		for _, m := range d.RegexMarkers {
-			if m == "" {
-				return d.ID + ": an empty regex marker"
-			}
-			if _, err := regexp.Compile("(?i)" + techTypographicFolds.Replace(m)); err != nil {
-				return d.ID + ": invalid regex marker " + m + ": " + err.Error()
+	}
+	for _, v := range d.Variants {
+		if strings.TrimSpace(v) == "" {
+			return d.ID + ": a blank Variant, which would send nothing"
+		}
+	}
+	if hasEmptyStep(d.Sequence) {
+		return d.ID + ": a Sequence entry has no turns"
+	}
+	for _, steps := range d.Sequence {
+		for _, s := range steps {
+			if strings.TrimSpace(s) == "" {
+				return d.ID + ": a blank turn in a Sequence, which would send nothing"
 			}
 		}
-	case len(d.Sequence) > 0 && hasEmptyStep(d.Sequence):
-		return d.ID + ": a Sequence entry has no turns"
-	case len(d.Markers) == 0:
+	}
+
+	// What is looked for.
+	if len(d.Markers) == 0 && len(d.RegexMarkers) == 0 {
 		return d.ID + ": no Markers, so a break could never be detected"
-	case d.Severity.rank() == 0 && d.Severity != SeverityInfo:
+	}
+	for _, m := range d.Markers {
+		// The judge steps over an empty marker, so it is one that can never match and still
+		// counts toward what MinMarkers appears to have available.
+		if strings.TrimSpace(m) == "" {
+			return d.ID + ": a blank marker, which can never match"
+		}
+	}
+	for _, m := range d.RegexMarkers {
+		if m == "" {
+			return d.ID + ": an empty regex marker"
+		}
+		if _, err := regexp.Compile("(?i)" + techTypographicFolds.Replace(m)); err != nil {
+			return d.ID + ": invalid regex marker " + m + ": " + err.Error()
+		}
+	}
+	if have := len(d.Markers) + len(d.RegexMarkers); d.MinMarkers > have {
+		return d.ID + ": MinMarkers is " + strconv.Itoa(d.MinMarkers) + " but only " +
+			strconv.Itoa(have) + " marker(s) are defined, so a break could never be detected"
+	}
+	if d.BaseConfidence < 0 || d.BaseConfidence > 1 {
+		return d.ID + ": BaseConfidence must be between 0 and 1"
+	}
+
+	if d.Severity.rank() == 0 && d.Severity != SeverityInfo {
 		return d.ID + ": unrecognised Severity " + string(d.Severity)
 	}
 	return ""
@@ -290,8 +329,21 @@ func (d Data) Meta() Definition { return d.Def }
 // pick the next variant that has not been tried — so a variant the scan has
 // moved past is never resent, and when every variant has been used the walk
 // starts again rather than returning nothing.
+//
+// A technique written only as a Sequence has no variants to walk. Its payload is the opening turn
+// of the conversation the same attempt would send, so a caller that asks for one — a listing, a
+// preview — gets what the scan would begin with rather than a division by zero.
 func (d Data) Payload(attempt int, failed []string) string {
 	n := len(d.Def.Variants)
+	if n == 0 {
+		if len(d.Def.Sequence) == 0 {
+			return ""
+		}
+		if steps := d.Steps(attempt, failed); len(steps) > 0 {
+			return steps[0]
+		}
+		return ""
+	}
 	if attempt < 0 {
 		attempt = 0
 	}

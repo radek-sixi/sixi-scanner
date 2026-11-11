@@ -125,6 +125,41 @@ func TestEachAttemptGetsItsOwnSession(t *testing.T) {
 	}
 }
 
+// Technique, round and attempt are the same on every run, so a conversation id built from those
+// alone repeats. Against a target that keeps its conversations, the second scan would then join the
+// first scan's: the cap-split probe starts from a running total it did not build.
+func TestTwoScansNeverShareAConversation(t *testing.T) {
+	sessionsOf := func() []string {
+		tr := &transcript{reply: func(string) string { return "nothing" }}
+		if _, err := Run(context.Background(), Config{
+			Target:      tr,
+			Registry:    registryOf(splitTechnique("xyzzy")),
+			Rounds:      2,
+			MaxAttempts: 2,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return tr.distinctSessions()
+	}
+
+	first, second := sessionsOf(), sessionsOf()
+	if len(first) != 4 || len(second) != 4 {
+		t.Fatalf("want 4 conversations per scan (2 rounds x 2 attempts), got %d and %d", len(first), len(second))
+	}
+	inFirst := map[string]bool{}
+	for _, id := range first {
+		inFirst[id] = true
+	}
+	for _, id := range second {
+		if inFirst[id] {
+			t.Errorf("the second scan reused conversation %q from the first", id)
+		}
+		if strings.ContainsAny(id, "./") {
+			t.Errorf("session id %q carries path characters", id)
+		}
+	}
+}
+
 // The attack is the pair. A break on the second turn has to be caught even though the first turn
 // was clean, and the transcript a report shows must contain both.
 func TestABreakOnEitherTurnIsAFinding(t *testing.T) {

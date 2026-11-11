@@ -87,9 +87,14 @@ func TestStageKeepsTheCandidateWhenTheJudgeCannotBeReached(t *testing.T) {
 	}))
 	defer srv.Close()
 	s := NewStage(New(srv.URL+"/v1/chat/completions", "judge", "k", 2*time.Second, 0), "")
-	_, v := s.Confirm(context.Background(), "policy", "payload", "response")
-	if v != engine.VerdictKeep {
-		t.Errorf("verdict = %v, want Keep: a 500 is not evidence of compliance", v)
+	reason, v := s.Confirm(context.Background(), "policy", "payload", "response")
+	if v == engine.VerdictReject {
+		t.Errorf("verdict = %v: a 500 is not evidence of compliance", v)
+	}
+	// Nor is it a confirmation. Reported as a keep, the finding would be marked as one a model
+	// had agreed with.
+	if v != engine.VerdictUnanswered || reason != "" {
+		t.Errorf("verdict = %v, reason = %q; want Unanswered and no reason", v, reason)
 	}
 }
 
@@ -170,5 +175,44 @@ func TestConfirmSendsThePolicyAndBothTexts(t *testing.T) {
 	var probe map[string]any
 	if err := json.Unmarshal([]byte(seen), &probe); err != nil {
 		t.Errorf("request body is not valid JSON: %v", err)
+	}
+}
+
+const lowVerdict = `{"choices":[{"message":{"content":"{\"violation\":true,\"severity\":\"low\",\"reason\":\"minor\"}"}}]}`
+
+// "none" is a floor, not the absence of one. The stage kept a low-severity violation under it while
+// the counters, which read the same zero as "unset" and fell back to medium, recorded a rejection.
+func TestAFloorOfNoneKeepsEveryViolationAndCountsItAsKept(t *testing.T) {
+	s := stageFor(t, lowVerdict, "none")
+	if _, v := s.Confirm(context.Background(), "policy", "payload", "response"); v != engine.VerdictKeep {
+		t.Fatalf("verdict = %v, want Keep for a low-severity violation under a floor of none", v)
+	}
+	_, kept, rejected, _ := s.Stats()
+	if kept != 1 || rejected != 0 {
+		t.Errorf("stats = kept %d, rejected %d; the stage kept it and the counters must agree", kept, rejected)
+	}
+	if s.Floor() != 0 {
+		t.Errorf("Floor = %d, want 0", s.Floor())
+	}
+}
+
+// A floor nobody recognises must not become the most permissive one.
+func TestAnUnrecognisedFloorIsMediumNotNone(t *testing.T) {
+	s := stageFor(t, lowVerdict, "hgih")
+	if s.Floor() != severityRank("medium") || s.MinSeverity != "medium" {
+		t.Errorf("Floor = %d (%q), want medium", s.Floor(), s.MinSeverity)
+	}
+	if _, v := s.Confirm(context.Background(), "policy", "payload", "response"); v != engine.VerdictReject {
+		t.Errorf("verdict = %v, want Reject: a mistyped floor let a low-severity answer through", v)
+	}
+	for _, name := range []string{"none", "low", "Medium", " HIGH ", "critical"} {
+		if !ValidFloor(name) {
+			t.Errorf("ValidFloor(%q) = false", name)
+		}
+	}
+	for _, name := range []string{"", "hgih", "severe", "info"} {
+		if ValidFloor(name) {
+			t.Errorf("ValidFloor(%q) = true", name)
+		}
 	}
 }

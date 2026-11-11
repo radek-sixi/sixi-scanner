@@ -195,7 +195,7 @@ func TestWriteSARIFIsStructurallyValid(t *testing.T) {
 		if len(res.Locations) == 0 {
 			t.Errorf("result %s has no location", res.RuleID)
 		}
-		if res.Fingerprints["sixiScan/v1"] == "" {
+		if res.Fingerprints["sixiScan/v2"] == "" {
 			t.Errorf("result %s has no fingerprint", res.RuleID)
 		}
 	}
@@ -207,13 +207,35 @@ func TestWriteSARIFIsStructurallyValid(t *testing.T) {
 	}
 }
 
-func TestSARIFInvocationReportsFailureWhenFindingsExist(t *testing.T) {
+// executionSuccessful says whether the tool ran, not whether it found anything. SARIF 2.1.0
+// §3.20.14 says so in as many words — a non-zero exit code may mean "results were found" — and a
+// consumer that reads false treats the upload as a failed analysis rather than as one with
+// results. The findings are in `results`, and the exit code is carried alongside.
+func TestSARIFInvocationSaysTheToolRanWhenFindingsExist(t *testing.T) {
 	var buf strings.Builder
 	if err := WriteSARIF(&buf, fixture()); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), `"executionSuccessful": false`) {
-		t.Error("a run with findings must not report executionSuccessful")
+	if !strings.Contains(buf.String(), `"executionSuccessful": true`) {
+		t.Error("a scan that ran and found something reported that it did not run")
+	}
+	if !strings.Contains(buf.String(), `"exitCode": 1`) {
+		t.Error("the exit code that says findings exist was lost")
+	}
+}
+
+// Only a scan that assessed nothing failed to run.
+func TestSARIFInvocationSaysTheToolFailedWhenNothingWasAssessed(t *testing.T) {
+	s := fixture()
+	s.Findings = nil
+	s.NoAnswer = append([]string(nil), s.Options.TechniqueIDs...)
+
+	var buf strings.Builder
+	if err := WriteSARIF(&buf, s); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), `"executionSuccessful": false`) || !strings.Contains(buf.String(), `"exitCode": 2`) {
+		t.Errorf("a scan that reached nothing must record a failed run:\n%s", buf.String())
 	}
 }
 

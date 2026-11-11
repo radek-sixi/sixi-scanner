@@ -24,8 +24,18 @@ func writeReport(w io.Writer, format string, scan *report.Scan, findingsToStderr
 	case "text", "":
 		return writeText(w, scan, findingsToStderr)
 	default:
-		return fmt.Errorf("unknown format %q; use text, json, sarif or markdown", format)
+		return checkFormat(format)
 	}
+}
+
+// checkFormat reports whether a --format value is one writeReport can produce. It is separate so
+// the value can be refused before a scan runs rather than after.
+func checkFormat(format string) error {
+	switch strings.ToLower(format) {
+	case "json", "sarif", "markdown", "md", "text", "":
+		return nil
+	}
+	return fmt.Errorf("unknown format %q; use text, json, sarif or markdown", format)
 }
 
 func writeText(w io.Writer, scan *report.Scan, toStderr bool) error {
@@ -53,6 +63,12 @@ func writeFindingsTo(w io.Writer, scan *report.Scan) {
 			fmt.Fprintf(w, "  - %s: %s\n", u.TechniqueID, u.Reason)
 		}
 	}
+	if len(scan.Undecided) > 0 {
+		fmt.Fprintf(w, "\nCould not be decided (answered, but not judgeable; these did not pass):\n")
+		for _, u := range scan.Undecided {
+			fmt.Fprintf(w, "  - %s: %s\n", u.TechniqueID, u.Reason)
+		}
+	}
 	if len(scan.Findings) == 0 {
 		return
 	}
@@ -61,6 +77,9 @@ func writeFindingsTo(w io.Writer, scan *report.Scan) {
 	for i, f := range scan.Findings {
 		fmt.Fprintf(w, "%d. [%s] %s\n", i+1, strings.ToUpper(string(f.Severity)), f.Title)
 		fmt.Fprintf(w, "   %s  confidence %.2f  %s\n", f.TechniqueID, f.Confidence, f.Evidence.Reason)
+		if len(f.DrawnBy) > 0 {
+			fmt.Fprintf(w, "   drawn by: %s\n", strings.Join(f.DrawnBy, ", "))
+		}
 		fmt.Fprintf(w, "   prompt:  %s\n", excerpt(f.Evidence.Prompt, 160))
 		fmt.Fprintf(w, "   reply:   %s\n\n", excerpt(f.Evidence.Response, 160))
 	}
@@ -74,7 +93,10 @@ func writeFile(path, format string, scan *report.Scan) error {
 			return fmt.Errorf("create %s: %w", dir, err)
 		}
 	}
-	f, err := os.Create(path)
+	// Readable by its owner only. A report holds the prompts and the replies, and a reply that is
+	// a finding is by definition something the agent should not have said: a system prompt, a
+	// credential, another customer's data. A file that already exists keeps the mode it has.
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return fmt.Errorf("create %s: %w", path, err)
 	}

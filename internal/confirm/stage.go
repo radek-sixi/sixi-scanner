@@ -2,6 +2,7 @@ package confirm
 
 import (
 	"context"
+	"strings"
 
 	"github.com/radek-sixi/sixi-scanner/internal/engine"
 )
@@ -21,11 +22,19 @@ type Stage struct {
 }
 
 // NewStage wraps a Client as a confirmation stage.
+//
+// minSeverity is one of none, low, medium, high or critical. Empty means medium, and so does a
+// name that is not one of those: a floor nobody recognises must not become the most permissive
+// one. A caller taking the value from a user should check it with ValidFloor first and say so.
 func NewStage(c *Client, minSeverity string) *Stage {
-	if minSeverity == "" {
+	minSeverity = strings.ToLower(strings.TrimSpace(minSeverity))
+	if !ValidFloor(minSeverity) {
 		minSeverity = "medium"
 	}
+	c.mu.Lock()
 	c.floor = severityRank(minSeverity)
+	c.floorSet = true
+	c.mu.Unlock()
 	return &Stage{Client: c, MinSeverity: minSeverity}
 }
 
@@ -34,13 +43,14 @@ func (s *Stage) Confirm(ctx context.Context, policy, payload, response string) (
 	v, err := s.Client.Confirm(ctx, policy, payload, response)
 	if err != nil {
 		// The question was not answered — a timeout, a 500, no budget. That is
-		// not evidence of compliance, so the candidate stands.
-		return "", engine.VerdictKeep
+		// not evidence of compliance, so the candidate stands; and it is not
+		// evidence of a violation either, so it stands unconfirmed.
+		return "", engine.VerdictUnanswered
 	}
-	if !v.Violation {
-		return v.Reason, engine.VerdictReject
-	}
-	if severityRank(v.Severity) < s.Client.floor {
+	// One rule, in one place. The stage used to compare against the client's raw floor while the
+	// client's own counters used the defaulted one, so at a floor of "none" a low-severity
+	// violation was kept here and counted there as rejected.
+	if !s.Client.Broken(v) {
 		return v.Reason, engine.VerdictReject
 	}
 	return v.Reason, engine.VerdictKeep
@@ -55,6 +65,6 @@ func (s *Stage) Stats() (asked, kept, rejected int, exhausted bool) {
 func (s *Stage) Model() string { return s.Client.Model }
 
 // Floor is the severity bar this stage enforces.
-func (s *Stage) Floor() int { return s.Client.floor }
+func (s *Stage) Floor() int { return s.Client.floorOrDefault() }
 
 var _ engine.Confirmer = (*Stage)(nil)

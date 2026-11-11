@@ -70,7 +70,10 @@ secrets and personal data. It is evidence.
 
 - No dependencies outside the Go standard library, and no `go.sum`. The supply
   chain is `git clone` plus the Go toolchain.
-- No network calls other than to the target URL and its redirects.
+- No network calls other than to the target URL, and to `--confirm-url` if you
+  set one. A redirect is followed only while it stays on the target's host: one
+  that leads to another host, or from https to http, is refused, because
+  following it would re-send the prompt and your request headers there.
 - No telemetry, no analytics, no crash reporting, no update check.
 - The binary makes no attempt to verify its own integrity, and does not phone
   home. There is nothing to disable, because there is nothing there.
@@ -85,6 +88,6 @@ A finding means: a technique's markers appeared in a reply in a form the judge
 did not recognise as a denial. It is a reproducible observation, not a proof of
 compromise, and the report carries the transcript so a reader can judge it.
 
-The absence of findings means: these 21 probes did not produce a finding. Not
+The absence of findings means: these 27 probes did not produce a finding. Not
 more than that. See [docs/techniques.md](docs/techniques.md) for what is not
 covered and [docs/judge.md](docs/judge.md) for the judge's known limitations.

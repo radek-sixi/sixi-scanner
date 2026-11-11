@@ -163,6 +163,10 @@ func init() { Register("chat", NewChat) }
 // otherwise carry one attempt's cumulative state into the next, and a technique that measures a
 // cap would report a split the agent never performed. The dots in a technique id are fine in a
 // header value, but they are replaced anyway so the id cannot be mistaken for a path.
+//
+// The key is unique within one scan and identical across scans, so on its own it is not enough
+// against a target that keeps its conversations between runs. The engine appends a random token
+// per scan for that reason; a caller using this directly should do the same.
 func SessionKey(techniqueID string, round, attempt int) string {
 	return strings.NewReplacer(".", "-", "/", "-").Replace(techniqueID) +
 		fmt.Sprintf("-r%d-a%d", round, attempt)

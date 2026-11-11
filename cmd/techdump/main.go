@@ -57,6 +57,14 @@ type record struct {
 	MinMarkers   int        `json:"min_markers"`
 	Confidence   float64    `json:"confidence"`
 	Tags         []string   `json:"tags,omitempty"`
+
+	// The four switches below decide how a reply is scored, not what is sent. A technique with
+	// ClaimCheck set and one without are different techniques that happen to share their text,
+	// so an export that leaves the switches out describes neither.
+	RequireAll     bool `json:"require_all,omitempty"`
+	ClaimCheck     bool `json:"claim_check,omitempty"`
+	RelayCheck     bool `json:"relay_check,omitempty"`
+	SkipRecitation bool `json:"skip_recitation,omitempty"`
 }
 
 // dump is the whole export.
@@ -144,7 +152,9 @@ func collect(reg *tech.Registry) []record {
 			RegexMarkers: append([]string(nil), d.RegexMarkers...),
 			Negations:    append([]string(nil), d.Negations...),
 			MinMarkers:   d.Minimum(), Confidence: d.Confidence(),
-			Tags: append([]string(nil), d.Tags...),
+			Tags:       append([]string(nil), d.Tags...),
+			RequireAll: d.RequireAll, ClaimCheck: d.ClaimCheck,
+			RelayCheck: d.RelayCheck, SkipRecitation: d.SkipRecitation,
 		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
@@ -196,8 +206,24 @@ func writeGo(records []record) error {
 		if r.Remediation != "" {
 			fmt.Fprintf(&b, "\t\tRemediation: %s,\n", quote(r.Remediation))
 		}
-		fmt.Fprintf(&b, "\t\tVariants:    []string{%s},\n", quoteAll(r.Variants))
-		fmt.Fprintf(&b, "\t\tMarkers:     []string{%s},\n", quoteAll(r.Markers))
+		// Each payload shape is written only when the technique has it. A sequence-only
+		// technique used to come out as an empty Variants list and no Sequence at all: a
+		// literal that pastes, compiles and can send nothing.
+		if len(r.Variants) > 0 {
+			fmt.Fprintf(&b, "\t\tVariants:    []string{%s},\n", quoteAll(r.Variants))
+		}
+		if len(r.Sequence) > 0 {
+			fmt.Fprintf(&b, "\t\tSequence:    [][]string{%s},\n", quoteSequence(r.Sequence))
+		}
+		if r.RequireAll {
+			fmt.Fprintf(&b, "\t\tRequireAll:  true,\n")
+		}
+		if len(r.Markers) > 0 {
+			fmt.Fprintf(&b, "\t\tMarkers:     []string{%s},\n", quoteAll(r.Markers))
+		}
+		if len(r.RegexMarkers) > 0 {
+			fmt.Fprintf(&b, "\t\tRegexMarkers: []string{%s},\n", quoteAll(r.RegexMarkers))
+		}
 		if len(r.Negations) > 0 {
 			fmt.Fprintf(&b, "\t\tNegations:   []string{%s},\n", quoteAll(r.Negations))
 		}
@@ -209,6 +235,15 @@ func writeGo(records []record) error {
 		}
 		if len(r.Tags) > 0 {
 			fmt.Fprintf(&b, "\t\tTags:        []string{%s},\n", quoteAll(r.Tags))
+		}
+		if r.ClaimCheck {
+			fmt.Fprintf(&b, "\t\tClaimCheck:  true,\n")
+		}
+		if r.RelayCheck {
+			fmt.Fprintf(&b, "\t\tRelayCheck:  true,\n")
+		}
+		if r.SkipRecitation {
+			fmt.Fprintf(&b, "\t\tSkipRecitation: true,\n")
 		}
 		fmt.Fprintf(&b, "\t},\n")
 	}
@@ -291,6 +326,10 @@ func report(path string, current []record) error {
 // unchanged compares the fields that change how a technique behaves. Description
 // and remediation text are excluded on purpose: rewording prose is not a
 // behavioural change and flagging it would train reviewers to ignore the output.
+//
+// Everything else is compared. The multi-turn payloads, the regex markers and the scoring switches
+// were once left out, so rewriting a technique's whole conversation, or dropping the pattern that
+// was its only evidence, compared as "no changes".
 func unchanged(a, b record) bool {
 	return a.Title == b.Title &&
 		a.Category == b.Category &&
@@ -298,8 +337,14 @@ func unchanged(a, b record) bool {
 		a.MinMarkers == b.MinMarkers &&
 		a.Confidence == b.Confidence &&
 		equalStrings(a.Variants, b.Variants) &&
+		equalSequences(a.Sequence, b.Sequence) &&
 		equalStrings(a.Markers, b.Markers) &&
-		equalStrings(a.Negations, b.Negations)
+		equalStrings(a.RegexMarkers, b.RegexMarkers) &&
+		equalStrings(a.Negations, b.Negations) &&
+		a.RequireAll == b.RequireAll &&
+		a.ClaimCheck == b.ClaimCheck &&
+		a.RelayCheck == b.RelayCheck &&
+		a.SkipRecitation == b.SkipRecitation
 }
 
 func describeChange(a, b record) string {
@@ -307,8 +352,18 @@ func describeChange(a, b record) string {
 	if !equalStrings(a.Variants, b.Variants) {
 		parts = append(parts, fmt.Sprintf("%d→%d payloads", len(a.Variants), len(b.Variants)))
 	}
+	if !equalSequences(a.Sequence, b.Sequence) {
+		parts = append(parts, fmt.Sprintf("%d→%d conversations", len(a.Sequence), len(b.Sequence)))
+	}
 	if !equalStrings(a.Markers, b.Markers) {
 		parts = append(parts, "markers")
+	}
+	if !equalStrings(a.RegexMarkers, b.RegexMarkers) {
+		parts = append(parts, "regex markers")
+	}
+	if a.RequireAll != b.RequireAll || a.ClaimCheck != b.ClaimCheck ||
+		a.RelayCheck != b.RelayCheck || a.SkipRecitation != b.SkipRecitation {
+		parts = append(parts, "scoring")
 	}
 	if !equalStrings(a.Negations, b.Negations) {
 		parts = append(parts, "negations")
@@ -370,6 +425,27 @@ func equalStrings(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func equalSequences(a, b [][]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !equalStrings(a[i], b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// quoteSequence emits the elements of a [][]string literal, one conversation per brace pair.
+func quoteSequence(seq [][]string) string {
+	out := make([]string, 0, len(seq))
+	for _, steps := range seq {
+		out = append(out, "{"+quoteAll(steps)+"}")
+	}
+	return strings.Join(out, ", ")
 }
 
 // quote emits a Go string literal. %q would almost do, but it escapes

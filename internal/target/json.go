@@ -82,8 +82,9 @@ func (j *jsonTarget) Describe() string {
 	return fmt.Sprintf("json %s (reply path %s)", redactURL(j.cfg.URL), j.replySep)
 }
 
-// renderTemplate substitutes {{prompt}} with the raw text and {{json}} with
-// the prompt as a JSON string. A template containing neither gets a
+// renderTemplate substitutes {{prompt}} with the prompt escaped for the JSON
+// string it sits in, and {{json}} with the prompt as a whole JSON string,
+// quotes included. A template containing neither gets a
 // {"message": ...} envelope, which is the common enough case to be worth
 // guessing.
 func renderTemplate(tpl, prompt string) ([]byte, error) {
@@ -98,8 +99,17 @@ func renderTemplate(tpl, prompt string) ([]byte, error) {
 		return []byte(strings.ReplaceAll(tpl, "{{json}}", string(encoded))), nil
 	}
 
+	// {{prompt}} sits inside a JSON string the template wrote — NewJSON rejects a template where
+	// it does not — so it is substituted escaped, without the quotes {{json}} would add. Dropped
+	// in raw, a prompt with a quote or a line break in it ended the string early and the body
+	// was no longer JSON: the target answered 400 to every multi-line payload.
 	if strings.Contains(tpl, "{{prompt}}") {
-		return []byte(strings.ReplaceAll(tpl, "{{prompt}}", prompt)), nil
+		encoded, err := json.Marshal(prompt)
+		if err != nil {
+			return nil, err
+		}
+		inner := string(encoded[1 : len(encoded)-1])
+		return []byte(strings.ReplaceAll(tpl, "{{prompt}}", inner)), nil
 	}
 
 	// No placeholder at all: assume a bare {"message": ...} shape is wanted.
