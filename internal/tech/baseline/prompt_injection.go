@@ -25,9 +25,10 @@ var (
 		"je ne vais pas",
 	}
 
+	// "you are a" is a substring match, so it already covers "you are an". Listing both made one
+	// phrase count as two markers and meet MinMarkers 2 on its own.
 	systemPromptMarkers = []string{
 		"you are a",
-		"you are an",
 		"your instructions",
 		"your system prompt",
 		"system prompt:",
