@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/radek-sixi/sixi-scanner/internal/report"
+	"github.com/radeksixi/sixi-scanner/internal/report"
 )
 
 // Asking for help is not a failed command. It exited 2 and printed "flag: help requested" as an

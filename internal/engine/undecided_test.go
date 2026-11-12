@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/radek-sixi/sixi-scanner/internal/target"
+	"github.com/radeksixi/sixi-scanner/internal/target"
 )
 
 // A claim of a completed action is decided by the tool trace. A connector that reports no trace

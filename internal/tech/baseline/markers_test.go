@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/radek-sixi/sixi-scanner/internal/judge"
+	"github.com/radeksixi/sixi-scanner/internal/judge"
 )
 
 // A marker is a substring, so a short one is also the tail of longer words. Each case here is a

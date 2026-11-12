@@ -7,9 +7,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/radek-sixi/sixi-scanner/internal/judge"
-	"github.com/radek-sixi/sixi-scanner/internal/report"
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/judge"
+	"github.com/radeksixi/sixi-scanner/internal/report"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
 )
 
 // A recitation is evidence about the agent, not about the technique whose payload drew it. These

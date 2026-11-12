@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/radek-sixi/sixi-scanner/internal/engine"
+	"github.com/radeksixi/sixi-scanner/internal/engine"
 )
 
 // Stage adapts a Client to the engine's Confirmer.

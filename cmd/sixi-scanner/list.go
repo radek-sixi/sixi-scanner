@@ -11,9 +11,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/radek-sixi/sixi-scanner/internal/report"
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
-	"github.com/radek-sixi/sixi-scanner/internal/tech/baseline"
+	"github.com/radeksixi/sixi-scanner/internal/report"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/tech/baseline"
 )
 
 func cmdList(args []string, stdout io.Writer) result {

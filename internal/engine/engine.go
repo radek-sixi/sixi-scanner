@@ -32,10 +32,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/radek-sixi/sixi-scanner/internal/judge"
-	"github.com/radek-sixi/sixi-scanner/internal/report"
-	"github.com/radek-sixi/sixi-scanner/internal/target"
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/judge"
+	"github.com/radeksixi/sixi-scanner/internal/report"
+	"github.com/radeksixi/sixi-scanner/internal/target"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
 )
 
 // Config is everything a run needs.

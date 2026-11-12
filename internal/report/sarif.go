@@ -7,13 +7,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
 )
 
 // sarifVersion is the only version this writer emits.
 const sarifVersion = "2.1.0"
 const sarifSchema = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
-const sarifToolURI = "https://github.com/radek-sixi/sixi-scanner"
+const sarifToolURI = "https://github.com/radeksixi/sixi-scanner"
 
 // sarifFingerprintKey names the fingerprint and the version of the algorithm behind it. It is v2
 // because v1 covered the whole reply rather than its opening, so the two are not comparable: a

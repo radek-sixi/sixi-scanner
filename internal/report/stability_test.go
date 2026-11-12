@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
 )
 
 func scanWith(n int) *Scan {

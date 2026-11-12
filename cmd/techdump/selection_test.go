@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
 )
 
 // A technique selection that silently returns the wrong set is worse than one that fails: the

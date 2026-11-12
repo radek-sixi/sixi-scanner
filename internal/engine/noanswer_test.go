@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/radek-sixi/sixi-scanner/internal/target"
+	"github.com/radeksixi/sixi-scanner/internal/target"
 )
 
 // statusOnly answers every prompt with one HTTP status and one body, the way a connector hands back

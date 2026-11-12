@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
 )
 
 // Recitation is the leak that marker matching structurally cannot see.

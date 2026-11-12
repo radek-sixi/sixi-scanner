@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
-	"github.com/radek-sixi/sixi-scanner/internal/tech/baseline"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/tech/baseline"
 )
 
 // A refusal is the outcome we want, so a marker that cannot tell a refusal from a disclosure is

@@ -87,7 +87,7 @@ about what that means.
 If you redistribute this code, keep `NOTICE`. If you want to be explicit about
 provenance in your own docs, the honest and complete form is:
 
-> Sixi Scanner — by Radek (Sixi), <https://github.com/radek-sixi/sixi-scanner>.
+> Sixi Scanner — by Radek (Sixi), <https://github.com/radeksixi/sixi-scanner>.
 > Licensed Apache 2.0.
 
 Attribution is a licence obligation and a courtesy. The courtesy costs nothing

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/radek-sixi/sixi-scanner/internal/target"
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/target"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
 )
 
 // The false-action-claim check is the first thing in this package that reads the tool trace rather

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/radek-sixi/sixi-scanner/internal/tech/baseline"
+	"github.com/radeksixi/sixi-scanner/internal/tech/baseline"
 )
 
 // An export is only useful if it is the technique. The Go form left out the multi-turn payloads,

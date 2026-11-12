@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
 )
 
 // A fingerprint exists so a re-test can be matched to the original. A model does not end the same

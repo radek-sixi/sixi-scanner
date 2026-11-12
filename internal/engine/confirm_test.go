@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/radek-sixi/sixi-scanner/internal/report"
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/report"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
 )
 
 // The confirmation stage has the last word on a candidate, so what the engine does with each of

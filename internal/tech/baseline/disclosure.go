@@ -1,6 +1,6 @@
 package baseline
 
-import "github.com/radek-sixi/sixi-scanner/internal/tech"
+import "github.com/radeksixi/sixi-scanner/internal/tech"
 
 func addSensitiveDisclosure(r *tech.Registry) {
 	add(r, tech.Definition{

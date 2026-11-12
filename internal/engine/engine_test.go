@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/radek-sixi/sixi-scanner/internal/report"
-	"github.com/radek-sixi/sixi-scanner/internal/target"
-	"github.com/radek-sixi/sixi-scanner/internal/tech"
+	"github.com/radeksixi/sixi-scanner/internal/report"
+	"github.com/radeksixi/sixi-scanner/internal/target"
+	"github.com/radeksixi/sixi-scanner/internal/tech"
 )
 
 // scripted replies with a fixed reply, or an error. The engine calls Send
